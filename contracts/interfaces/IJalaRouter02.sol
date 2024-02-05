@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "./ICAPORouter01.sol";
+import "./IJalaRouter01.sol";
 
-interface ICAPORouter02 is ICAPORouter01 {
+interface IJalaRouter02 is IJalaRouter01 {
     error Expired();
     error InsufficientBAmount();
     error InsufficientAAmount();

@@ -2,31 +2,31 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import "../contracts/libraries/CAPOLibrary.sol";
-import "../contracts/CAPOFactory.sol";
-import "../contracts/CAPOPair.sol";
+import "../contracts/libraries/JalaLibrary.sol";
+import "../contracts/JalaFactory.sol";
+import "../contracts/JalaPair.sol";
 import "../contracts/mocks/ERC20Mintable.sol";
 
-contract CAPOLibrary_Test is Test {
+contract JalaLibrary_Test is Test {
     address feeSetter = address(69);
-    CAPOFactory factory;
-    CAPOERC20 capo;
+    JalaFactory factory;
+    JalaERC20 Jala;
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
     ERC20Mintable tokenC;
     ERC20Mintable tokenD;
 
-    CAPOPair pair;
-    CAPOPair pair2;
-    CAPOPair pair3;
+    JalaPair pair;
+    JalaPair pair2;
+    JalaPair pair3;
 
     function encodeError(string memory error) internal pure returns (bytes memory encoded) {
         encoded = abi.encodeWithSignature(error);
     }
 
     function setUp() public {
-        factory = new CAPOFactory(feeSetter);
+        factory = new JalaFactory(feeSetter);
 
         tokenA = new ERC20Mintable("TokenA", "TKNA");
         tokenB = new ERC20Mintable("TokenB", "TKNB");
@@ -39,22 +39,22 @@ contract CAPOLibrary_Test is Test {
         tokenD.mint(10 ether, address(this));
 
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        pair = CAPOPair(pairAddress);
+        pair = JalaPair(pairAddress);
 
         pairAddress = factory.createPair(address(tokenB), address(tokenC));
-        pair2 = CAPOPair(pairAddress);
+        pair2 = JalaPair(pairAddress);
 
         pairAddress = factory.createPair(address(tokenC), address(tokenD));
-        pair3 = CAPOPair(pairAddress);
+        pair3 = JalaPair(pairAddress);
     }
 
     function test_GetReserves() public {
         tokenA.transfer(address(pair), 1.1 ether);
         tokenB.transfer(address(pair), 0.8 ether);
 
-        CAPOPair(address(pair)).mint(address(this));
+        JalaPair(address(pair)).mint(address(this));
 
-        (uint256 reserve0, uint256 reserve1) = CAPOLibrary.getReserves(
+        (uint256 reserve0, uint256 reserve1) = JalaLibrary.getReserves(
             address(factory),
             address(tokenA),
             address(tokenB)
@@ -65,52 +65,52 @@ contract CAPOLibrary_Test is Test {
     }
 
     function test_Quote() public {
-        uint256 amountOut = CAPOLibrary.quote(1 ether, 1 ether, 1 ether);
+        uint256 amountOut = JalaLibrary.quote(1 ether, 1 ether, 1 ether);
         assertEq(amountOut, 1 ether);
 
-        amountOut = CAPOLibrary.quote(1 ether, 2 ether, 1 ether);
+        amountOut = JalaLibrary.quote(1 ether, 2 ether, 1 ether);
         assertEq(amountOut, 0.5 ether);
 
-        amountOut = CAPOLibrary.quote(1 ether, 1 ether, 2 ether);
+        amountOut = JalaLibrary.quote(1 ether, 1 ether, 2 ether);
         assertEq(amountOut, 2 ether);
     }
 
     function test_PairFor() public {
-        address pairAddress = CAPOLibrary.pairFor(address(factory), address(tokenA), address(tokenB));
+        address pairAddress = JalaLibrary.pairFor(address(factory), address(tokenA), address(tokenB));
 
         assertEq(pairAddress, factory.getPair(address(tokenA), address(tokenB)));
     }
 
     function test_PairForTokensSorting() public {
-        address pairAddress = CAPOLibrary.pairFor(address(factory), address(tokenB), address(tokenA));
+        address pairAddress = JalaLibrary.pairFor(address(factory), address(tokenB), address(tokenA));
 
         assertEq(pairAddress, factory.getPair(address(tokenA), address(tokenB)));
     }
 
     function test_PairForNonexistentFactory() public {
-        address pairAddress = CAPOLibrary.pairFor(address(0xaabbcc), address(tokenB), address(tokenA));
+        address pairAddress = JalaLibrary.pairFor(address(0xaabbcc), address(tokenB), address(tokenA));
 
         assertEq(pairAddress, 0x83076b5Ae88DE7e1B187956bB69adEE497fFD77F);
     }
 
     function test_GetAmountOut() public {
-        uint256 amountOut = CAPOLibrary.getAmountOut(1000, 1 ether, 1.5 ether);
+        uint256 amountOut = JalaLibrary.getAmountOut(1000, 1 ether, 1.5 ether);
         assertEq(amountOut, 1495);
     }
 
     function test_GetAmountOutZeroInputAmount() public {
-        vm.expectRevert(CAPOLibrary.InsufficientInputAmount.selector);
-        CAPOLibrary.getAmountOut(0, 1 ether, 1.5 ether);
+        vm.expectRevert(JalaLibrary.InsufficientInputAmount.selector);
+        JalaLibrary.getAmountOut(0, 1 ether, 1.5 ether);
     }
 
     function test_GetAmountOutZeroInputReserve() public {
-        vm.expectRevert(CAPOLibrary.InsufficientLiquidity.selector);
-        CAPOLibrary.getAmountOut(1000, 0, 1.5 ether);
+        vm.expectRevert(JalaLibrary.InsufficientLiquidity.selector);
+        JalaLibrary.getAmountOut(1000, 0, 1.5 ether);
     }
 
     function test_GetAmountOutZeroOutputReserve() public {
-        vm.expectRevert(CAPOLibrary.InsufficientLiquidity.selector);
-        CAPOLibrary.getAmountOut(1000, 1 ether, 0);
+        vm.expectRevert(JalaLibrary.InsufficientLiquidity.selector);
+        JalaLibrary.getAmountOut(1000, 1 ether, 0);
     }
 
     function test_GetAmountsOut() public {
@@ -132,7 +132,7 @@ contract CAPOLibrary_Test is Test {
         path[2] = address(tokenC);
         path[3] = address(tokenD);
 
-        uint256[] memory amounts = CAPOLibrary.getAmountsOut(address(factory), 0.1 ether, path);
+        uint256[] memory amounts = JalaLibrary.getAmountsOut(address(factory), 0.1 ether, path);
 
         assertEq(amounts.length, 4);
         assertEq(amounts[0], 0.1 ether);
@@ -145,28 +145,28 @@ contract CAPOLibrary_Test is Test {
         address[] memory path = new address[](1);
         path[0] = address(tokenA);
 
-        vm.expectRevert(CAPOLibrary.InvalidPath.selector);
-        CAPOLibrary.getAmountsOut(address(factory), 0.1 ether, path);
+        vm.expectRevert(JalaLibrary.InvalidPath.selector);
+        JalaLibrary.getAmountsOut(address(factory), 0.1 ether, path);
     }
 
     function test_GetAmountIn() public {
-        uint256 amountIn = CAPOLibrary.getAmountIn(1495, 1 ether, 1.5 ether);
+        uint256 amountIn = JalaLibrary.getAmountIn(1495, 1 ether, 1.5 ether);
         assertEq(amountIn, 1000);
     }
 
     function test_GetAmountInZeroInputAmount() public {
-        vm.expectRevert(CAPOLibrary.InsufficientOutputAmount.selector);
-        CAPOLibrary.getAmountIn(0, 1 ether, 1.5 ether);
+        vm.expectRevert(JalaLibrary.InsufficientOutputAmount.selector);
+        JalaLibrary.getAmountIn(0, 1 ether, 1.5 ether);
     }
 
     function test_GetAmountInZeroInputReserve() public {
-        vm.expectRevert(CAPOLibrary.InsufficientLiquidity.selector);
-        CAPOLibrary.getAmountIn(1000, 0, 1.5 ether);
+        vm.expectRevert(JalaLibrary.InsufficientLiquidity.selector);
+        JalaLibrary.getAmountIn(1000, 0, 1.5 ether);
     }
 
     function test_GetAmountInZeroOutputReserve() public {
-        vm.expectRevert(CAPOLibrary.InsufficientLiquidity.selector);
-        CAPOLibrary.getAmountIn(1000, 1 ether, 0);
+        vm.expectRevert(JalaLibrary.InsufficientLiquidity.selector);
+        JalaLibrary.getAmountIn(1000, 1 ether, 0);
     }
 
     function test_GetAmountsIn() public {
@@ -188,7 +188,7 @@ contract CAPOLibrary_Test is Test {
         path[2] = address(tokenC);
         path[3] = address(tokenD);
 
-        uint256[] memory amounts = CAPOLibrary.getAmountsIn(address(factory), 0.1 ether, path);
+        uint256[] memory amounts = JalaLibrary.getAmountsIn(address(factory), 0.1 ether, path);
 
         assertEq(amounts.length, 4);
         assertEq(amounts[0], 0.063113405152841847 ether);
@@ -201,7 +201,7 @@ contract CAPOLibrary_Test is Test {
         address[] memory path = new address[](1);
         path[0] = address(tokenA);
 
-        vm.expectRevert(CAPOLibrary.InvalidPath.selector);
-        CAPOLibrary.getAmountsIn(address(factory), 0.1 ether, path);
+        vm.expectRevert(JalaLibrary.InvalidPath.selector);
+        JalaLibrary.getAmountsIn(address(factory), 0.1 ether, path);
     }
 }

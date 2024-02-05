@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-import "./libraries/CAPOLibrary.sol";
+import "./libraries/JalaLibrary.sol";
 import "./libraries/TransferHelper.sol";
-import "./interfaces/ICAPOFactory.sol";
+import "./interfaces/IJalaFactory.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/ICAPORouter02.sol";
+import "./interfaces/IJalaRouter02.sol";
 import "./interfaces/IWETH.sol";
 
-contract CAPORouter02 is ICAPORouter02 {
+contract JalaRouter02 is IJalaRouter02 {
     address public immutable override factory;
     address public immutable override WETH;
 
@@ -37,19 +37,19 @@ contract CAPORouter02 is ICAPORouter02 {
         uint256 amountBMin
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
         // create the pair if it doesn't exist yet
-        if (ICAPOFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            ICAPOFactory(factory).createPair(tokenA, tokenB);
+        if (IJalaFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IJalaFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint256 reserveA, uint256 reserveB) = CAPOLibrary.getReserves(factory, tokenA, tokenB);
+        (uint256 reserveA, uint256 reserveB) = JalaLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = CAPOLibrary.quote(amountADesired, reserveA, reserveB);
+            uint256 amountBOptimal = JalaLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 if (amountBOptimal < amountBMin) revert InsufficientBAmount();
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = CAPOLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint256 amountAOptimal = JalaLibrary.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
                 if (amountAOptimal < amountAMin) revert InsufficientAAmount();
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
@@ -68,10 +68,10 @@ contract CAPORouter02 is ICAPORouter02 {
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = CAPOLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = ICAPOPair(pair).mint(to);
+        liquidity = IJalaPair(pair).mint(to);
     }
 
     function addLiquidityETH(
@@ -97,11 +97,11 @@ contract CAPORouter02 is ICAPORouter02 {
             amountTokenMin,
             amountETHMin
         );
-        address pair = CAPOLibrary.pairFor(factory, token, WETH);
+        address pair = JalaLibrary.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = ICAPOPair(pair).mint(to);
+        liquidity = IJalaPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -116,10 +116,10 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        address pair = CAPOLibrary.pairFor(factory, tokenA, tokenB);
-        ICAPOPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = ICAPOPair(pair).burn(to);
-        (address token0, ) = CAPOLibrary.sortTokens(tokenA, tokenB);
+        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
+        IJalaPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint256 amount0, uint256 amount1) = IJalaPair(pair).burn(to);
+        (address token0, ) = JalaLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         if (amountA < amountAMin) revert InsufficientAAmount();
         if (amountB < amountBMin) revert InsufficientBAmount();
@@ -160,9 +160,9 @@ contract CAPORouter02 is ICAPORouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
-        address pair = CAPOLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        ICAPOPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -178,9 +178,9 @@ contract CAPORouter02 is ICAPORouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountToken, uint256 amountETH) {
-        address pair = CAPOLibrary.pairFor(factory, token, WETH);
+        address pair = JalaLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        ICAPOPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -211,9 +211,9 @@ contract CAPORouter02 is ICAPORouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountETH) {
-        address pair = CAPOLibrary.pairFor(factory, token, WETH);
+        address pair = JalaLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        ICAPOPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token,
             liquidity,
@@ -229,13 +229,13 @@ contract CAPORouter02 is ICAPORouter02 {
     function _swap(uint256[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = CAPOLibrary.sortTokens(input, output);
+            (address token0, ) = JalaLibrary.sortTokens(input, output);
             uint256 amountOut = amounts[i + 1];
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOut)
                 : (amountOut, uint256(0));
-            address to = i < path.length - 2 ? CAPOLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            ICAPOPair(CAPOLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
+            address to = i < path.length - 2 ? JalaLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IJalaPair(JalaLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
 
@@ -246,12 +246,12 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = CAPOLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert CAPOLibrary.InsufficientOutputAmount();
+        amounts = JalaLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            CAPOLibrary.pairFor(factory, path[0], path[1]),
+            JalaLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -264,12 +264,12 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = CAPOLibrary.getAmountsIn(factory, amountOut, path);
+        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            CAPOLibrary.pairFor(factory, path[0], path[1]),
+            JalaLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -281,11 +281,11 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert CAPOLibrary.InvalidPath();
-        amounts = CAPOLibrary.getAmountsOut(factory, msg.value, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert CAPOLibrary.InsufficientOutputAmount();
+        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
+        amounts = JalaLibrary.getAmountsOut(factory, msg.value, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(CAPOLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
 
@@ -296,13 +296,13 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[path.length - 1] != WETH) revert CAPOLibrary.InvalidPath();
-        amounts = CAPOLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
+        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            CAPOLibrary.pairFor(factory, path[0], path[1]),
+            JalaLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -317,13 +317,13 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[path.length - 1] != WETH) revert CAPOLibrary.InvalidPath();
-        amounts = CAPOLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert CAPOLibrary.InsufficientOutputAmount();
+        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
+        amounts = JalaLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            CAPOLibrary.pairFor(factory, path[0], path[1]),
+            JalaLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -337,11 +337,11 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert CAPOLibrary.InvalidPath();
-        amounts = CAPOLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
+        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > msg.value) revert ExcessiveInputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(CAPOLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -352,8 +352,8 @@ contract CAPORouter02 is ICAPORouter02 {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = CAPOLibrary.sortTokens(input, output);
-            ICAPOPair pair = ICAPOPair(CAPOLibrary.pairFor(factory, input, output));
+            (address token0, ) = JalaLibrary.sortTokens(input, output);
+            IJalaPair pair = IJalaPair(JalaLibrary.pairFor(factory, input, output));
             uint256 amountInput;
             uint256 amountOutput;
             {
@@ -363,12 +363,12 @@ contract CAPORouter02 is ICAPORouter02 {
                     ? (reserve0, reserve1)
                     : (reserve1, reserve0);
                 amountInput = IERC20(input).balanceOf(address(pair)) - reserveInput;
-                amountOutput = CAPOLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
+                amountOutput = JalaLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOutput)
                 : (amountOutput, uint256(0));
-            address to = i < path.length - 2 ? CAPOLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? JalaLibrary.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -380,11 +380,11 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) {
-        TransferHelper.safeTransferFrom(path[0], msg.sender, CAPOLibrary.pairFor(factory, path[0], path[1]), amountIn);
+        TransferHelper.safeTransferFrom(path[0], msg.sender, JalaLibrary.pairFor(factory, path[0], path[1]), amountIn);
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         if (IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore < amountOutMin)
-            revert CAPOLibrary.InsufficientOutputAmount();
+            revert JalaLibrary.InsufficientOutputAmount();
     }
 
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
@@ -393,14 +393,14 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) {
-        if (path[0] != WETH) revert CAPOLibrary.InvalidPath();
+        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
         uint256 amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(CAPOLibrary.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amountIn));
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         if (IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore < amountOutMin)
-            revert CAPOLibrary.InsufficientOutputAmount();
+            revert JalaLibrary.InsufficientOutputAmount();
     }
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -410,11 +410,11 @@ contract CAPORouter02 is ICAPORouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) {
-        if (path[path.length - 1] != WETH) revert CAPOLibrary.InvalidPath();
-        TransferHelper.safeTransferFrom(path[0], msg.sender, CAPOLibrary.pairFor(factory, path[0], path[1]), amountIn);
+        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
+        TransferHelper.safeTransferFrom(path[0], msg.sender, JalaLibrary.pairFor(factory, path[0], path[1]), amountIn);
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint256 amountOut = IERC20(WETH).balanceOf(address(this));
-        if (amountOut < amountOutMin) revert CAPOLibrary.InsufficientOutputAmount();
+        if (amountOut < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
@@ -425,7 +425,7 @@ contract CAPORouter02 is ICAPORouter02 {
         uint256 reserveA,
         uint256 reserveB
     ) public pure virtual override returns (uint256 amountB) {
-        return CAPOLibrary.quote(amountA, reserveA, reserveB);
+        return JalaLibrary.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(
@@ -433,7 +433,7 @@ contract CAPORouter02 is ICAPORouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountOut) {
-        return CAPOLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return JalaLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(
@@ -441,24 +441,24 @@ contract CAPORouter02 is ICAPORouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountIn) {
-        return CAPOLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return JalaLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(
         uint256 amountIn,
         address[] memory path
     ) public view virtual override returns (uint256[] memory amounts) {
-        return CAPOLibrary.getAmountsOut(factory, amountIn, path);
+        return JalaLibrary.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(
         uint256 amountOut,
         address[] memory path
     ) public view virtual override returns (uint256[] memory amounts) {
-        return CAPOLibrary.getAmountsIn(factory, amountOut, path);
+        return JalaLibrary.getAmountsIn(factory, amountOut, path);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view virtual override returns (address) {
-        return CAPOLibrary.pairFor(factory, tokenA, tokenB);
+        return JalaLibrary.pairFor(factory, tokenA, tokenB);
     }
 }

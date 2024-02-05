@@ -2,15 +2,15 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import "../contracts/CAPOFactory.sol";
-import "../contracts/tokens/CAPOERC20.sol";
-import "../contracts/CAPOPair.sol";
-import "../contracts/interfaces/ICAPOFactory.sol";
+import "../contracts/JalaFactory.sol";
+import "../contracts/tokens/JalaERC20.sol";
+import "../contracts/JalaPair.sol";
+import "../contracts/interfaces/IJalaFactory.sol";
 import "../contracts/mocks/ERC20Mintable.sol";
 
-contract CAPOFactory_Test is Test {
+contract JalaFactory_Test is Test {
     address feeSetter = address(69);
-    CAPOFactory factory;
+    JalaFactory factory;
 
     ERC20Mintable token0;
     ERC20Mintable token1;
@@ -18,7 +18,7 @@ contract CAPOFactory_Test is Test {
     ERC20Mintable token3;
 
     function setUp() public {
-        factory = new CAPOFactory(feeSetter);
+        factory = new JalaFactory(feeSetter);
 
         token0 = new ERC20Mintable("Token A", "TKNA");
         token1 = new ERC20Mintable("Token B", "TKNB");
@@ -33,29 +33,29 @@ contract CAPOFactory_Test is Test {
     function test_CreatePair() public {
         address pairAddress = factory.createPair(address(token1), address(token0));
 
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
 
         assertEq(pair.token0(), address(token0));
         assertEq(pair.token1(), address(token1));
     }
 
     function test_CreatePairZeroAddress() public {
-        vm.expectRevert(ICAPOFactory.ZeroAddress.selector);
+        vm.expectRevert(IJalaFactory.ZeroAddress.selector);
         factory.createPair(address(0), address(token0));
 
-        vm.expectRevert(ICAPOFactory.ZeroAddress.selector);
+        vm.expectRevert(IJalaFactory.ZeroAddress.selector);
         factory.createPair(address(token1), address(0));
     }
 
     function test_CreatePairPairExists() public {
         factory.createPair(address(token1), address(token0));
 
-        vm.expectRevert(ICAPOFactory.PairExists.selector);
+        vm.expectRevert(IJalaFactory.PairExists.selector);
         factory.createPair(address(token1), address(token0));
     }
 
     function test_CreatePairIdenticalTokens() public {
-        vm.expectRevert(ICAPOFactory.IdenticalAddresses.selector);
+        vm.expectRevert(IJalaFactory.IdenticalAddresses.selector);
         factory.createPair(address(token0), address(token0));
     }
 }

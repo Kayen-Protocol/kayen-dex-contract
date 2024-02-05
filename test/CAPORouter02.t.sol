@@ -2,18 +2,18 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import "../contracts/CAPOFactory.sol";
-import "../contracts/CAPOPair.sol";
-import "../contracts/CAPORouter02.sol";
-import "../contracts/interfaces/ICAPORouter02.sol";
+import "../contracts/JalaFactory.sol";
+import "../contracts/JalaPair.sol";
+import "../contracts/JalaRouter02.sol";
+import "../contracts/interfaces/IJalaRouter02.sol";
 import "../contracts/mocks/ERC20Mintable.sol";
 
-contract CAPORouter02_Test is Test {
+contract JalaRouter02_Test is Test {
     address feeSetter = address(69);
     ERC20Mintable WETH;
 
-    CAPORouter02 router;
-    CAPOFactory factory;
+    JalaRouter02 router;
+    JalaFactory factory;
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
@@ -22,8 +22,8 @@ contract CAPORouter02_Test is Test {
     function setUp() public {
         WETH = new ERC20Mintable("Wrapped ETH", "WETH");
 
-        factory = new CAPOFactory(feeSetter);
-        router = new CAPORouter02(address(factory), address(WETH));
+        factory = new JalaFactory(feeSetter);
+        router = new JalaRouter02(address(factory), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA");
         tokenB = new ERC20Mintable("Token B", "TKNB");
@@ -81,7 +81,7 @@ contract CAPORouter02_Test is Test {
         assertEq(tokenA.balanceOf(pairAddress), 1 ether);
         assertEq(tokenB.balanceOf(pairAddress), 1 ether);
 
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenB));
         assertEq(pair.token1(), address(tokenA));
@@ -95,7 +95,7 @@ contract CAPORouter02_Test is Test {
     function test_AddLiquidityAmountBOptimalIsOk() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
 
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenB));
         assertEq(pair.token1(), address(tokenA));
@@ -126,7 +126,7 @@ contract CAPORouter02_Test is Test {
     function test_AddLiquidityAmountBOptimalIsTooLow() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
 
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
         assertEq(pair.token0(), address(tokenB));
         assertEq(pair.token1(), address(tokenA));
 
@@ -137,7 +137,7 @@ contract CAPORouter02_Test is Test {
         tokenA.approve(address(router), 1 ether);
         tokenB.approve(address(router), 2 ether);
 
-        vm.expectRevert(ICAPORouter02.InsufficientBAmount.selector);
+        vm.expectRevert(IJalaRouter02.InsufficientBAmount.selector);
         router.addLiquidity(
             address(tokenA),
             address(tokenB),
@@ -152,7 +152,7 @@ contract CAPORouter02_Test is Test {
 
     function test_AddLiquidityAmountBOptimalTooHighAmountATooLow() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenB));
         assertEq(pair.token1(), address(tokenA));
@@ -164,7 +164,7 @@ contract CAPORouter02_Test is Test {
         tokenA.approve(address(router), 2 ether);
         tokenB.approve(address(router), 1 ether);
 
-        vm.expectRevert(ICAPORouter02.InsufficientAAmount.selector);
+        vm.expectRevert(IJalaRouter02.InsufficientAAmount.selector);
         router.addLiquidity(
             address(tokenA),
             address(tokenB),
@@ -179,7 +179,7 @@ contract CAPORouter02_Test is Test {
 
     function test_AddLiquidityAmountBOptimalIsTooHighAmountAOk() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenB));
         assertEq(pair.token1(), address(tokenA));
@@ -222,7 +222,7 @@ contract CAPORouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
@@ -262,7 +262,7 @@ contract CAPORouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         liquidity = (liquidity * 3) / 10;
@@ -303,12 +303,12 @@ contract CAPORouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
 
-        vm.expectRevert(ICAPORouter02.InsufficientAAmount.selector);
+        vm.expectRevert(IJalaRouter02.InsufficientAAmount.selector);
         router.removeLiquidity(
             address(tokenA),
             address(tokenB),
@@ -336,12 +336,12 @@ contract CAPORouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        CAPOPair pair = CAPOPair(pairAddress);
+        JalaPair pair = JalaPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
 
-        vm.expectRevert(ICAPORouter02.InsufficientBAmount.selector);
+        vm.expectRevert(IJalaRouter02.InsufficientBAmount.selector);
         router.removeLiquidity(
             address(tokenA),
             address(tokenB),

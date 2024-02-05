@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface ICAPOFactory {
+interface IJalaFactory {
     error OnlyFeeSetter();
     error IdenticalAddresses();
     error PairExists();
