@@ -58,4 +58,8 @@ contract ChilizWrappedERC20 is ERC20, IChilizWrappedERC20 {
 
         return true;
     }
+
+    function getDecimalsOffset() public view returns (uint256) {
+        return decimalsOffset;
+    }
 }

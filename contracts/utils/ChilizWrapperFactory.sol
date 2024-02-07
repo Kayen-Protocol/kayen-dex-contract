@@ -10,6 +10,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChilizWrapperFactory is IChilizWrapperFactory, Ownable {
     mapping(address => address) public underlyingToWrapped;
+    mapping(address => address) public wrappedToUnderlying;
 
     function wrap(address account, address underlyingToken, uint256 amount) public returns (address wrappedToken) {
         wrappedToken = underlyingToWrapped[underlyingToken];
@@ -39,6 +40,7 @@ contract ChilizWrapperFactory is IChilizWrapperFactory, Ownable {
         ChilizWrappedERC20(wrappedToken).initialize(IERC20(underlyingToken));
 
         underlyingToWrapped[underlyingToken] = address(wrappedToken);
+        wrappedToUnderlying[address(wrappedToken)] = underlyingToken;
 
         emit WrappedTokenCreated(underlyingToken, wrappedToken);
     }
@@ -58,6 +60,10 @@ contract ChilizWrapperFactory is IChilizWrapperFactory, Ownable {
                 )
             )
         );
+    }
+
+    function getUnderlyingToWrapped(address underlying) public view returns (address) {
+        return underlyingToWrapped[underlying];
     }
 
     function _transferTokens(IERC20 token, address approveToken, uint256 amount) internal {
