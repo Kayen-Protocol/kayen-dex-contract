@@ -19,4 +19,8 @@ interface IChilizWrapperFactory {
     function unwrap(address account, address wrappedToken, uint256 amount) external;
 
     function createWrappedToken(address underlyingToken) external returns (address);
+
+    function wrappedTokenFor(address underlyingToken) external view returns (address);
+
+    function getUnderlyingToWrapped(address underlyingToken) external view returns (address);
 }

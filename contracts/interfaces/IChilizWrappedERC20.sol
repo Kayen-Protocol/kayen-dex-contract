@@ -19,4 +19,6 @@ interface IChilizWrappedERC20 {
     function depositFor(address account, uint256 amount) external returns (bool);
 
     function withdrawTo(address account, uint256 amount) external returns (bool);
+
+    function getDecimalsOffset() external view returns (uint256);
 }
