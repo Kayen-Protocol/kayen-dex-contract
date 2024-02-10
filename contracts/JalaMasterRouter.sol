@@ -39,7 +39,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         uint256 amountBMin, // unwrapped
         address to,
         uint256 deadline
-    ) public returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+    ) public virtual override returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
         address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
 
@@ -144,7 +144,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountA, uint256 amountB) {
+    ) external virtual override returns (uint256 amountA, uint256 amountB) {
         address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
         address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
         address pair = JalaLibrary.pairFor(factory, wrappedTokenA, wrappedTokenB);
@@ -193,7 +193,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         uint256 amountETHMin,
         address to,
         uint256 deadline
-    ) public virtual returns (uint256 amountToken, uint256 amountETH) {
+    ) public virtual override returns (uint256 amountToken, uint256 amountETH) {
         address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(token);
         address pair = JalaLibrary.pairFor(factory, wrappedToken, address(WETH));
         TransferHelper.safeTransferFrom(pair, msg.sender, address(this), liquidity);
@@ -233,7 +233,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external virtual returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
+    ) external virtual override returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
         address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
 
         require(path[0] == wrappedTokenIn, "MS: !path");
@@ -304,7 +304,13 @@ contract JalaMasterRouter is IJalaMasterRouter {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external payable virtual returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
+    )
+        external
+        payable
+        virtual
+        override
+        returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder)
+    {
         amounts = IJalaRouter02(router).swapExactETHForTokens{value: msg.value}(amountOutMin, path, to, deadline);
         (reminderTokenAddress, reminder) = _unwrapAndTransfer(path, to);
     }
@@ -316,7 +322,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external virtual returns (uint256[] memory amounts) {
+    ) external virtual override returns (uint256[] memory amounts) {
         address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
 
         require(path[0] == wrappedTokenIn, "MS: !path");
