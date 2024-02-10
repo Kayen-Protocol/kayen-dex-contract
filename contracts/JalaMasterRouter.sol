@@ -311,7 +311,12 @@ contract JalaMasterRouter is IJalaMasterRouter {
         override
         returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder)
     {
-        amounts = IJalaRouter02(router).swapExactETHForTokens{value: msg.value}(amountOutMin, path, to, deadline);
+        amounts = IJalaRouter02(router).swapExactETHForTokens{value: msg.value}(
+            amountOutMin,
+            path,
+            address(this),
+            deadline
+        );
         (reminderTokenAddress, reminder) = _unwrapAndTransfer(path, to);
     }
 
