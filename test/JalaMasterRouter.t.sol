@@ -70,43 +70,24 @@ contract JalaMasterRouter_Test is Test {
             user0,
             block.timestamp
         );
-        tokenA.approve(address(masterRouter), 10000000);
-        tokenB.approve(address(masterRouter), 10000000);
-
-        masterRouter.wrapTokensAndaddLiquidity(
-            address(tokenA),
-            address(tokenB),
-            12321,
-            1000000,
-            0,
-            0,
-            user0,
-            block.timestamp
-        );
         address pairAddress = factory.getPair(
             wrapperFactory.wrappedTokenFor(address(tokenA)),
             wrapperFactory.wrappedTokenFor(address(tokenB))
         );
-        uint256 a = JalaPair(pairAddress).balanceOf(user0);
-        console.logUint(a);
+        uint256 liquidity = JalaPair(pairAddress).balanceOf(user0);
+        console.logUint(liquidity);
+        assertEq(liquidity, 10000000 * 1e18 - 1000);
     }
 
     function test_AddLiquidityETH() public {
-        tokenA.approve(address(masterRouter), 20000);
-        // tokenB.approve(address(masterRouter), 1 ether);
+        tokenA.approve(address(masterRouter), 1 ether);
 
-        masterRouter.wrapTokenAndaddLiquidityETH{value: 20000}(
-            address(tokenA),
-            20000,
-            20000,
-            20000,
-            user0,
-            block.timestamp
-        );
+        masterRouter.wrapTokenAndaddLiquidityETH{value: 1 ether}(address(tokenA), 1, 1, 1, user0, block.timestamp);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA)), address(WETH));
-        uint256 a = JalaPair(pairAddress).balanceOf(user0);
-        console.logUint(a);
+        uint256 liquidity = JalaPair(pairAddress).balanceOf(user0);
+        console.logUint(liquidity);
+        assertEq(liquidity, 1 ether - 1000);
     }
 
     function test_RemoveLiquidity() public {
