@@ -16,7 +16,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
     address public immutable factory;
     address public immutable WETH;
     address public immutable router;
-    address public wrapperFactory;
+    address public immutable wrapperFactory;
 
     constructor(address _factory, address _wrapperFactory, address _router, address _WETH) {
         factory = _factory;
@@ -40,8 +40,15 @@ contract JalaMasterRouter is IJalaMasterRouter {
         address to,
         uint256 deadline
     ) public virtual override returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
+        // get token from user
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountADesired);
+        TransferHelper.safeTransferFrom(tokenB, msg.sender, address(this), amountBDesired);
+
+        IERC20(tokenA).approve(wrapperFactory, amountADesired); // no need for check return value, bc addliquidity will revert if approve was declined.
+        IERC20(tokenB).approve(wrapperFactory, amountBDesired);
+
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenA, amountADesired);
+        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenB, amountBDesired);
 
         if (IChilizWrapperFactory(wrapperFactory).getUnderlyingToWrapped(tokenA) == address(0)) {
             IChilizWrapperFactory(wrapperFactory).createWrappedToken(tokenA);
@@ -53,25 +60,6 @@ contract JalaMasterRouter is IJalaMasterRouter {
 
         uint256 tokenAOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
         uint256 tokenBOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
-
-        (uint256 amountToken0, uint256 amountToken1) = _calculateWrapAmount(
-            wrappedTokenA,
-            wrappedTokenB,
-            amountADesired * tokenAOffset,
-            amountBDesired * tokenBOffset,
-            amountAMin * tokenAOffset,
-            amountBMin * tokenBOffset
-        );
-
-        // get token from user
-        TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountADesired);
-        TransferHelper.safeTransferFrom(tokenB, msg.sender, address(this), amountBDesired);
-
-        IERC20(tokenA).approve(wrapperFactory, amountADesired); // no need for check return value, bc addliquidity will revert if approve was declined.
-        IERC20(tokenB).approve(wrapperFactory, amountBDesired);
-
-        IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenA, amountADesired);
-        IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenB, amountBDesired);
 
         IERC20(wrappedTokenA).approve(router, IERC20(wrappedTokenA).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
         IERC20(wrappedTokenB).approve(router, IERC20(wrappedTokenB).balanceOf(address(this)));
@@ -98,28 +86,15 @@ contract JalaMasterRouter is IJalaMasterRouter {
         address to,
         uint256 deadline
     ) external payable virtual override returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
-        address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(token);
+        TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
+        IERC20(token).approve(wrapperFactory, amountTokenDesired); // no need for check return value, bc addliquidity will revert if approve was declined.
+        address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amountTokenDesired);
 
         if (IChilizWrapperFactory(wrapperFactory).getUnderlyingToWrapped(token) == address(0)) {
             IChilizWrapperFactory(wrapperFactory).createWrappedToken(token);
         }
 
         uint256 tokenOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
-
-        (uint256 amountToken0, uint256 amountToken1) = _calculateWrapAmount(
-            wrappedToken,
-            WETH,
-            amountTokenDesired * tokenOffset,
-            msg.value,
-            amountTokenMin * tokenOffset,
-            amountETHMin
-        );
-
-        TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
-
-        IERC20(token).approve(wrapperFactory, amountTokenDesired); // no need for check return value, bc addliquidity will revert if approve was declined.
-
-        IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amountTokenDesired);
 
         IERC20(wrappedToken).approve(router, IERC20(wrappedToken).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
 
@@ -360,32 +335,6 @@ contract JalaMasterRouter is IJalaMasterRouter {
             reminderTokenAddress = address(wrappedTokenOut);
             reminder = IERC20(wrappedTokenOut).balanceOf(address(this));
             TransferHelper.safeTransfer(wrappedTokenOut, to, IERC20(wrappedTokenOut).balanceOf(address(this)));
-        }
-    }
-
-    function _calculateWrapAmount(
-        address tokenA,
-        address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin
-    ) private view returns (uint256 amountA, uint256 amountB) {
-        // wrap if it is not wrapped token
-        if (IJalaFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            return (amountADesired, amountBDesired);
-        }
-        (uint256 reserveA, uint256 reserveB) = JalaLibrary.getReserves(factory, tokenA, tokenB);
-
-        uint256 amountBOptimal = JalaLibrary.quote(amountADesired, reserveA, reserveB);
-        if (amountBOptimal <= amountBDesired) {
-            if (amountBOptimal < amountBMin) revert InsufficientBAmount();
-            (amountA, amountB) = (amountADesired, amountBOptimal);
-        } else {
-            uint256 amountAOptimal = JalaLibrary.quote(amountBDesired, reserveB, reserveA);
-            assert(amountAOptimal <= amountADesired);
-            if (amountAOptimal < amountAMin) revert InsufficientAAmount();
-            (amountA, amountB) = (amountAOptimal, amountBDesired);
         }
     }
 }
