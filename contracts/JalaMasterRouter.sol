@@ -44,22 +44,11 @@ contract JalaMasterRouter is IJalaMasterRouter {
         TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountADesired);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, address(this), amountBDesired);
 
-        IERC20(tokenA).approve(wrapperFactory, amountADesired); // no need for check return value, bc addliquidity will revert if approve was declined.
-        IERC20(tokenB).approve(wrapperFactory, amountBDesired);
-
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenA, amountADesired);
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrap(address(this), tokenB, amountBDesired);
-
-        if (IChilizWrapperFactory(wrapperFactory).getUnderlyingToWrapped(tokenA) == address(0)) {
-            IChilizWrapperFactory(wrapperFactory).createWrappedToken(tokenA);
-        }
-
-        if (IChilizWrapperFactory(wrapperFactory).getUnderlyingToWrapped(tokenB) == address(0)) {
-            IChilizWrapperFactory(wrapperFactory).createWrappedToken(tokenB);
-        }
+        address wrappedTokenA = _approveAndWrap(tokenA, amountADesired);
+        address wrappedTokenB = _approveAndWrap(tokenB, amountBDesired);
 
         uint256 tokenAOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
-        uint256 tokenBOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        uint256 tokenBOffset = IChilizWrappedERC20(wrappedTokenB).getDecimalsOffset();
 
         IERC20(wrappedTokenA).approve(router, IERC20(wrappedTokenA).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
         IERC20(wrappedTokenB).approve(router, IERC20(wrappedTokenB).balanceOf(address(this)));
@@ -75,6 +64,8 @@ contract JalaMasterRouter is IJalaMasterRouter {
             to,
             deadline
         );
+        _unwrapAndTransfer(wrappedTokenA, to);
+        _unwrapAndTransfer(wrappedTokenB, to);
     }
 
     function wrapTokenAndaddLiquidityETH(
@@ -87,12 +78,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         uint256 deadline
     ) external payable virtual override returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
         TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
-        IERC20(token).approve(wrapperFactory, amountTokenDesired); // no need for check return value, bc addliquidity will revert if approve was declined.
-        address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amountTokenDesired);
-
-        if (IChilizWrapperFactory(wrapperFactory).getUnderlyingToWrapped(token) == address(0)) {
-            IChilizWrapperFactory(wrapperFactory).createWrappedToken(token);
-        }
+        address wrappedToken = _approveAndWrap(token, amountTokenDesired);
 
         uint256 tokenOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
 
@@ -109,6 +95,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
 
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
+        _unwrapAndTransfer(wrappedToken, to);
     }
 
     function removeLiquidityAndUnwrapToken(
@@ -214,8 +201,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         require(path[0] == wrappedTokenIn, "MS: !path");
 
         TransferHelper.safeTransferFrom(originTokenAddress, msg.sender, address(this), amountIn);
-        IERC20(originTokenAddress).approve(wrapperFactory, amountIn); // no need for check return value, bc addliquidity will revert if approve was declined.
-        IChilizWrapperFactory(wrapperFactory).wrap(address(this), originTokenAddress, amountIn);
+        _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
         amounts = IJalaRouter02(router).swapExactTokensForTokens(
@@ -225,7 +211,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
             address(this),
             deadline
         );
-        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path, to);
+        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
     }
 
     // function swapTokensForExactTokens(
@@ -292,7 +278,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
             address(this),
             deadline
         );
-        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path, to);
+        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
     }
 
     function swapExactTokensForETH(
@@ -308,19 +294,20 @@ contract JalaMasterRouter is IJalaMasterRouter {
         require(path[0] == wrappedTokenIn, "MS: !path");
 
         TransferHelper.safeTransferFrom(originTokenAddress, msg.sender, address(this), amountIn);
-        IERC20(originTokenAddress).approve(wrapperFactory, amountIn); // no need for check return value, bc addliquidity will revert if approve was declined.
-        IChilizWrapperFactory(wrapperFactory).wrap(address(this), originTokenAddress, amountIn);
+        _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
         amounts = IJalaRouter02(router).swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
     }
 
     function _unwrapAndTransfer(
-        address[] memory path,
+        address wrappedTokenOut,
         address to
     ) private returns (address reminderTokenAddress, uint256 reminder) {
-        address wrappedTokenOut = path[path.length - 1];
+        // address wrappedTokenOut = path[path.length - 1];
         uint256 balanceOut = IERC20(wrappedTokenOut).balanceOf(address(this));
+        if (balanceOut == 0) return (reminderTokenAddress, reminder);
+
         uint256 tokenOutOffset = IChilizWrappedERC20(wrappedTokenOut).getDecimalsOffset();
         uint256 tokenOutReturnAmount = (balanceOut / tokenOutOffset) * tokenOutOffset;
 
@@ -336,5 +323,10 @@ contract JalaMasterRouter is IJalaMasterRouter {
             reminder = IERC20(wrappedTokenOut).balanceOf(address(this));
             TransferHelper.safeTransfer(wrappedTokenOut, to, IERC20(wrappedTokenOut).balanceOf(address(this)));
         }
+    }
+
+    function _approveAndWrap(address token, uint256 amount) private returns (address wrappedToken) {
+        IERC20(token).approve(wrapperFactory, amount); // no need for check return value, bc addliquidity will revert if approve was declined.
+        wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
     }
 }
