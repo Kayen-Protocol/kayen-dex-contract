@@ -39,7 +39,8 @@ contract JalaLens is Initializable {
         uint256 amountIn,
         address[] memory path
     ) public view returns (uint256[] memory amounts, uint256 unwrappedAmount, uint256 reminder) {
-        amounts = JalaLibrary.getAmountsOut(factory, amountIn, path);
+        uint256 tokenAOutOffset = IChilizWrappedERC20(path[0]).getDecimalsOffset();
+        amounts = JalaLibrary.getAmountsOut(factory, amountIn * tokenAOutOffset, path);
         address tokenOut = path[path.length - 1];
         (unwrappedAmount, reminder) = getReminder(tokenOut, amounts[amounts.length - 1]);
     }
@@ -50,7 +51,8 @@ contract JalaLens is Initializable {
         address tokenB
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, tokenA, tokenB);
-        amountOut = JalaLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
+        amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         (unwrappedAmount, reminder) = getReminder(tokenB, amountOut);
     }
 
@@ -61,8 +63,9 @@ contract JalaLens is Initializable {
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
         address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
         address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
+        uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, wrappedTokenA, wrappedTokenB);
-        amountOut = JalaLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         (unwrappedAmount, reminder) = getReminder(tokenB, amountOut);
     }
 
