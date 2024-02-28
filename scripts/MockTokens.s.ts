@@ -8,6 +8,7 @@ async function main() {
 
   // Deploy CAPOFactory with the address of the CAPO token
   const erc20MintableFactory = await ethers.getContractFactory("ERC20Mintable");
+  // await erc20MintableA.mint(mintAmount, deployer.address);
 
   const TKNAAddress = "";
   const TKNBAddress = "";
