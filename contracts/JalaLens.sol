@@ -62,10 +62,12 @@ contract JalaLens is Initializable {
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
         address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
         address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
-        uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
+        uint256 tokenAOutOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, wrappedTokenA, wrappedTokenB);
+
         amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
-        (unwrappedAmount, reminder) = _getReminder(tokenB, amountOut);
+        (unwrappedAmount, reminder) = _getReminder(wrappedTokenB, amountOut);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view returns (address) {
