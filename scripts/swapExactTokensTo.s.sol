@@ -13,24 +13,24 @@ contract swapExactToken is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        JalaMasterRouter masterRouter = JalaMasterRouter(payable(0x36524bc7269E07561C8219f9b3300E899f83F458));
-        ERC20Mintable TT0 = ERC20Mintable(0x2DB5e3707B2cdaAE26592bDF5F604b120ff8712E);
-        ERC20Mintable TT1 = ERC20Mintable(0x4EFbbAE904d7bea13D0b4216E73C1F1Ba5AC5796);
+        JalaMasterRouter masterRouter = JalaMasterRouter(payable(0xce37E1b6CA28F679693a4831006CAEfa8a520D97));
+        ERC20Mintable TT0 = ERC20Mintable(0xF9C0F80a6c67b1B39bdDF00ecD57f2533ef5b688);
+        // ERC20Mintable TT1 = ERC20Mintable(0x4EFbbAE904d7bea13D0b4216E73C1F1Ba5AC5796);
 
-        ChilizWrapperFactory wapperFactory = ChilizWrapperFactory(0xF7084F8B0e73DC329EF03CD53f0f32090A4c0ff9);
+        // ChilizWrapperFactory wapperFactory = ChilizWrapperFactory(0xF7084F8B0e73DC329EF03CD53f0f32090A4c0ff9);
 
-        TT0.approve(address(masterRouter), 1000);
+        TT0.approve(address(masterRouter), 1);
 
-        uint256 balanceTT0 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
-        uint256 balanceTT1 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
-        uint256 balanceWTT1 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
+        // uint256 balanceTT0 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
+        // uint256 balanceTT1 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
+        // uint256 balanceWTT1 = TT0.balanceOf(0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897);
 
         address[] memory path = new address[](2);
-        path[0] = 0x177A87c2C9db840Bf7CB24dAf598a8C4Af327A0E;
-        path[1] = 0x4fc6a635D333D7b70E059c219E0c95A29B8790A7;
+        path[0] = 0xaA6E14da5cd99f20552F23b23ceD9c026b5164F0;
+        path[1] = 0xb167645aF1bCc5098Bf9aeD803f51aC851Def98a;
         masterRouter.swapExactTokensForTokens(
             address(TT0),
-            1000,
+            1,
             0,
             path,
             0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897,

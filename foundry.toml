@@ -16,7 +16,7 @@ fuzz_max_global_rejects = 65536
 fuzz_max_local_rejects = 1024
 fuzz_runs = 1000
 gas_limit = 9223372036854775807
-gas_price = 50000000000
+gas_price = 500000000
 gas_reports = ['*']
 ignored_error_codes = [1878]
 initial_balance = '0xffffffffffffffffffffffff'
@@ -25,7 +25,7 @@ libs = ["node_modules", "lib"]
 names = false
 offline = false
 optimizer = true
-optimizer_runs = 888888
+optimizer_runs = 20_000
 out = 'artifacts'
 sender = '0x00a329c0648769a73afac7f9381e08fb43dbea72'
 sizes = false
@@ -39,7 +39,7 @@ fs_permissions = [{ access = "read", path = "./test"}]
 [networks]
 url = "https://chiliz-spicy.publicnode.com"
 gas_limit = 9223372036854775807
-gas_price = 50000000000
+gas_price = 50000
 
 [profile.local]
 via_ir = false
