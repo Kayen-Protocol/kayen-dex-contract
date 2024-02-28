@@ -42,7 +42,7 @@ contract JalaLens is Initializable {
         uint256 tokenAOutOffset = IChilizWrappedERC20(path[0]).getDecimalsOffset();
         amounts = JalaLibrary.getAmountsOut(factory, amountIn * tokenAOutOffset, path);
         address tokenOut = path[path.length - 1];
-        (unwrappedAmount, reminder) = getReminder(tokenOut, amounts[amounts.length - 1]);
+        (unwrappedAmount, reminder) = _getReminder(tokenOut, amounts[amounts.length - 1]);
     }
 
     function getAmountOutForUnwrapped(
@@ -53,7 +53,7 @@ contract JalaLens is Initializable {
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, tokenA, tokenB);
         uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
         amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
-        (unwrappedAmount, reminder) = getReminder(tokenB, amountOut);
+        (unwrappedAmount, reminder) = _getReminder(tokenB, amountOut);
     }
 
     function convertAndGetAmountOutForUnwrpped(
@@ -66,14 +66,14 @@ contract JalaLens is Initializable {
         uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, wrappedTokenA, wrappedTokenB);
         amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
-        (unwrappedAmount, reminder) = getReminder(tokenB, amountOut);
+        (unwrappedAmount, reminder) = _getReminder(tokenB, amountOut);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view returns (address) {
         return JalaLibrary.pairFor(factory, tokenA, tokenB);
     }
 
-    function getReminder(
+    function __getReminder(
         address tokenOut,
         uint256 amount
     ) internal view returns (uint256 unwrappedAmount, uint256 reminder) {
