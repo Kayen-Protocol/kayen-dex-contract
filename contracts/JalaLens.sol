@@ -15,7 +15,6 @@ contract JalaLens is Initializable {
         wrapperFactory = _wrapperFactory;
     }
 
-    // **** LIBRARY FUNCTIONS ****
     function quote(uint256 amountA, address tokenA, address tokenB) public view returns (uint256 amountB) {
         (uint256 reserveIn, uint256 reserveOut) = JalaLibrary.getReserves(factory, tokenA, tokenB);
         return JalaLibrary.quote(amountA, reserveIn, reserveOut);
@@ -73,7 +72,7 @@ contract JalaLens is Initializable {
         return JalaLibrary.pairFor(factory, tokenA, tokenB);
     }
 
-    function __getReminder(
+    function _getReminder(
         address tokenOut,
         uint256 amount
     ) internal view returns (uint256 unwrappedAmount, uint256 reminder) {
