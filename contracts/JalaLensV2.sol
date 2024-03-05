@@ -10,12 +10,14 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 contract JalaLensV2 is Initializable {
     address public factory;
     address public wrapperFactory;
+    address public WETH;
 
     error InvalidPath();
 
-    function initialize(address _factory, address _wrapperFactory) public initializer {
+    function initialize(address _factory, address _wrapperFactory, address _WETH) public initializer {
         factory = _factory;
         wrapperFactory = _wrapperFactory;
+        WETH = _WETH;
     }
 
     function quote(uint256 amountA, address tokenA, address tokenB) public view returns (uint256 amountB) {
@@ -73,14 +75,31 @@ contract JalaLensV2 is Initializable {
         address tokenA,
         address tokenB
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
-        uint256 tokenAOutOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        address wrappedTokenA;
+        address wrappedTokenB;
+        uint256 tokenAOutOffset = 1;
+
+        if (tokenA != WETH) {
+            wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
+            tokenAOutOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        } else {
+            wrappedTokenA = WETH;
+        }
+
+        if (tokenB != WETH) {
+            wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
+        } else {
+            wrappedTokenB = WETH;
+        }
+        // wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
+        // wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
 
         (uint256 reserveIn, uint256 reserveOut) = getReserves(wrappedTokenA, wrappedTokenB);
 
         amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
-        (unwrappedAmount, reminder) = _getReminder(wrappedTokenB, amountOut);
+        if (tokenB != WETH) {
+            (unwrappedAmount, reminder) = _getReminder(wrappedTokenB, amountOut);
+        }
     }
 
     function getReserves(address tokenA, address tokenB) public view returns (uint256 reserveA, uint256 reserveB) {

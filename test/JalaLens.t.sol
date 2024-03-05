@@ -7,6 +7,7 @@ import "../contracts/JalaFactory.sol";
 import "../contracts/JalaPair.sol";
 import "../contracts/JalaRouter02.sol";
 import "../contracts/JalaLens.sol";
+import "../contracts/JalaLensV2.sol";
 import "../contracts/interfaces/IJalaRouter02.sol";
 import "../contracts/mocks/ERC20Mintable_decimal.sol";
 import "../contracts/mocks/MockWETH.sol";
@@ -25,7 +26,7 @@ contract JalaMasterRouter_Test is Test {
     JalaMasterRouter public masterRouter;
     JalaFactory public factory;
     IChilizWrapperFactory public wrapperFactory;
-    JalaLens public lens;
+    JalaLensV2 public lens;
 
     ERC20Mintable public tokenA;
     ERC20Mintable public tokenB;
@@ -41,8 +42,8 @@ contract JalaMasterRouter_Test is Test {
         wrapperFactory = new ChilizWrapperFactory();
         masterRouter = new JalaMasterRouter(address(factory), address(wrapperFactory), address(router), address(WETH));
 
-        lens = new JalaLens();
-        lens.initialize(address(factory), address(wrapperFactory));
+        lens = new JalaLensV2();
+        lens.initialize(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB = new ERC20Mintable("Token B", "TKNB", 0);
@@ -142,7 +143,7 @@ contract JalaMasterRouter_Test is Test {
         console.logUint(reminder);
     }
 
-    function test_convertAndGetAmountOutForUnwrpped() public {
+    function test_convertAndGetAmountOutForUnwrppedTokenToToken() public {
         tokenA.approve(address(masterRouter), 10000000);
         tokenB.approve(address(masterRouter), 10000000);
 
@@ -165,7 +166,7 @@ contract JalaMasterRouter_Test is Test {
         console.logUint(_reserve1);
 
         // uint256 a = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA))).getDecimalsOffset();
-        // console.logUint(a);
+
         (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) = lens.convertAndGetAmountOutForUnwrpped(
             10,
             address(tokenA),
@@ -179,6 +180,80 @@ contract JalaMasterRouter_Test is Test {
         console2.log("Address from factory", addrFromFactory);
         assertEq(addrFromFactory, addrFromLib);
         assertEq(9, unwrappedAmount);
+
+        console.logUint(amountOut);
+        console.logUint(unwrappedAmount);
+        console.logUint(reminder);
+    }
+
+    function test_convertAndGetAmountOutForUnwrppedWETHToToken() public {
+        tokenB.approve(address(wrapperFactory), 10000000);
+        address wTokenB = wrapperFactory.wrap(address(this), address(tokenB), 10000000);
+
+        ERC20Mintable(wTokenB).approve(address(router), 100e18);
+        // WETH.approve(address(router), 100000);
+        router.addLiquidityETH{value: 100e18}(wTokenB, 100e18, 0, 0, user0, block.timestamp);
+        // router.addLiquidity(address(WETH), wTokenB, 100000, 100000, 0, 0, user0, block.timestamp);
+
+        address wTokenA = address(WETH);
+
+        address pairAddress = factory.getPair(wTokenA, wTokenB);
+        (uint112 _reserve0, uint112 _reserve1, ) = JalaPair(pairAddress).getReserves();
+        console.logUint(_reserve0);
+        console.logUint(_reserve1);
+
+        // uint256 a = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA))).getDecimalsOffset();
+
+        (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) = lens.convertAndGetAmountOutForUnwrpped(
+            10e18,
+            address(WETH),
+            address(tokenB)
+        );
+
+        address addrFromLib = JalaLibrary.pairFor(address(factory), wTokenA, wTokenB);
+        address addrFromFactory = JalaFactory(factory).getPair(wTokenA, wTokenB);
+
+        console2.log("Address from Lib", addrFromLib);
+        console2.log("Address from factory", addrFromFactory);
+        assertEq(addrFromFactory, addrFromLib);
+        assertEq(9, unwrappedAmount);
+
+        console.logUint(amountOut);
+        console.logUint(unwrappedAmount);
+        console.logUint(reminder);
+    }
+
+    function test_convertAndGetAmountOutForUnwrppedTokenToWETH() public {
+        tokenB.approve(address(wrapperFactory), 10000000);
+        address wTokenB = wrapperFactory.wrap(address(this), address(tokenB), 10000000);
+
+        ERC20Mintable(wTokenB).approve(address(router), 100e18);
+        // WETH.approve(address(router), 100000);
+        router.addLiquidityETH{value: 100e18}(wTokenB, 100e18, 0, 0, user0, block.timestamp);
+        // router.addLiquidity(address(WETH), wTokenB, 100000, 100000, 0, 0, user0, block.timestamp);
+
+        address wTokenA = address(WETH);
+
+        address pairAddress = factory.getPair(wTokenA, wTokenB);
+        (uint112 _reserve0, uint112 _reserve1, ) = JalaPair(pairAddress).getReserves();
+        console.logUint(_reserve0);
+        console.logUint(_reserve1);
+
+        // uint256 a = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA))).getDecimalsOffset();
+
+        (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) = lens.convertAndGetAmountOutForUnwrpped(
+            10,
+            address(tokenB),
+            address(WETH)
+        );
+
+        address addrFromLib = JalaLibrary.pairFor(address(factory), wTokenA, wTokenB);
+        address addrFromFactory = JalaFactory(factory).getPair(wTokenA, wTokenB);
+
+        console2.log("Address from Lib", addrFromLib);
+        console2.log("Address from factory", addrFromFactory);
+        assertEq(addrFromFactory, addrFromLib);
+        assertEq(0, unwrappedAmount);
 
         console.logUint(amountOut);
         console.logUint(unwrappedAmount);
