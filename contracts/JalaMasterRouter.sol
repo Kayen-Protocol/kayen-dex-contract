@@ -59,8 +59,8 @@ contract JalaMasterRouter is IJalaMasterRouter {
             wrappedTokenB,
             amountADesired * tokenAOffset,
             amountBDesired * tokenBOffset,
-            amountAMin * tokenAOffset,
-            amountBMin * tokenBOffset,
+            amountAMin,
+            amountBMin,
             to,
             deadline
         );
@@ -297,7 +297,13 @@ contract JalaMasterRouter is IJalaMasterRouter {
         _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-        amounts = IJalaRouter02(router).swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
+        amounts = IJalaRouter02(router).swapExactTokensForETH(
+            IERC20(wrappedTokenIn).balanceOf(address(this)),
+            amountOutMin,
+            path,
+            to,
+            deadline
+        );
     }
 
     function _unwrapAndTransfer(
