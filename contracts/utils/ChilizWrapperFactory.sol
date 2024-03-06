@@ -6,9 +6,8 @@ import {IChilizWrappedERC20} from "../interfaces/IChilizWrappedERC20.sol";
 import {ChilizWrappedERC20} from "./ChilizWrappedERC20.sol";
 import {IERC20} from "../interfaces/IERC20.sol";
 import {SafeERC20} from "../libraries/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ChilizWrapperFactory is IChilizWrapperFactory, Ownable {
+contract ChilizWrapperFactory is IChilizWrapperFactory {
     mapping(address => address) public underlyingToWrapped;
     mapping(address => address) public wrappedToUnderlying;
 
