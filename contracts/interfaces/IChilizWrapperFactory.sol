@@ -13,6 +13,8 @@ interface IChilizWrapperFactory {
         address newUnderlyingToken,
         address newWrappedToken
     );
+    event Wrap(address account, address underlyingToken, uint256 amount, address wrappedToken, uint256 wrappedAmount);
+    event Unwrap(address account, address wrappedToken, uint256 amount, uint256 unwrappedAmount);
 
     function wrap(address account, address underlyingToken, uint256 amount) external returns (address wrappedToken);
 

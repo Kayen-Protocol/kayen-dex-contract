@@ -30,19 +30,23 @@ contract ChilizWrappedERC20 is ERC20, IChilizWrappedERC20 {
         return underlyingToken;
     }
 
-    function depositFor(address account, uint256 amount) public virtual returns (bool) {
+    function depositFor(address account, uint256 amount) public virtual returns (bool success, uint256 wrappedAmount) {
         if (address(underlyingToken) == address(0)) revert NotInitialized();
         address sender = _msgSender();
         if (sender == address(this)) revert CannotDeposit();
         SafeERC20.safeTransferFrom(underlyingToken, sender, address(this), amount);
-        _mint(account, amount * decimalsOffset);
+        wrappedAmount = amount * decimalsOffset;
+        _mint(account, wrappedAmount);
 
         emit Deposit(account, amount);
 
-        return true;
+        return (true, wrappedAmount);
     }
 
-    function withdrawTo(address account, uint256 amount) public virtual returns (bool) {
+    function withdrawTo(
+        address account,
+        uint256 amount
+    ) public virtual returns (bool success, uint256 unwrappedAmount) {
         if (address(underlyingToken) == address(0)) revert NotInitialized();
         uint256 unwrapAmount = amount / decimalsOffset;
         if (unwrapAmount == 0) revert CannotWithdraw();
@@ -56,7 +60,7 @@ contract ChilizWrappedERC20 is ERC20, IChilizWrappedERC20 {
 
         emit Withdraw(account, amount);
 
-        return true;
+        return (true, unwrapAmount);
     }
 
     function getDecimalsOffset() public view returns (uint256) {

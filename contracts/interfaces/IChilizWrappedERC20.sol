@@ -16,9 +16,9 @@ interface IChilizWrappedERC20 {
 
     function underlying() external view returns (IERC20);
 
-    function depositFor(address account, uint256 amount) external returns (bool);
+    function depositFor(address account, uint256 amount) external returns (bool success, uint256 wrappedAmount);
 
-    function withdrawTo(address account, uint256 amount) external returns (bool);
+    function withdrawTo(address account, uint256 amount) external returns (bool success, uint256 unwrappedAmount);
 
     function getDecimalsOffset() external view returns (uint256);
 }

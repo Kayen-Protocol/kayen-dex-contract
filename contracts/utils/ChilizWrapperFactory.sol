@@ -17,12 +17,14 @@ contract ChilizWrapperFactory is IChilizWrapperFactory {
             wrappedToken = _createWrappedToken(underlyingToken);
         }
         _transferTokens(IERC20(underlyingToken), wrappedToken, amount);
-        IChilizWrappedERC20(wrappedToken).depositFor(account, amount);
+        (, uint256 wrappedAmount) = IChilizWrappedERC20(wrappedToken).depositFor(account, amount);
+        emit Wrap(account, underlyingToken, amount, wrappedToken, wrappedAmount);
     }
 
     function unwrap(address account, address wrappedToken, uint256 amount) public {
         _transferTokens(IERC20(wrappedToken), wrappedToken, amount);
-        IChilizWrappedERC20(wrappedToken).withdrawTo(account, amount);
+        (, uint256 unwrappedAmount) = IChilizWrappedERC20(wrappedToken).withdrawTo(account, amount);
+        emit Unwrap(account, wrappedToken, amount, unwrappedAmount);
     }
 
     function createWrappedToken(address underlyingToken) public returns (address) {
