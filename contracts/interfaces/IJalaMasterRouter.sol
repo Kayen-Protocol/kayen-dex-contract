@@ -6,6 +6,8 @@ interface IJalaMasterRouter {
     error InsufficientBAmount();
     error InsufficientAAmount();
 
+    event MasterRouterSwap(uint256[] amounts, address reminderTokenAddress, uint256 reminder);
+
     function wrapTokensAndaddLiquidity(
         address tokenA,
         address tokenB,

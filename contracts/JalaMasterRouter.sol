@@ -212,6 +212,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
             deadline
         );
         (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
+        emit MasterRouterSwap(amounts, reminderTokenAddress, reminder);
     }
 
     // function swapTokensForExactTokens(
@@ -279,6 +280,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
             deadline
         );
         (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
+        emit MasterRouterSwap(amounts, reminderTokenAddress, reminder);
     }
 
     function swapExactTokensForETH(
@@ -304,6 +306,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
             to,
             deadline
         );
+        emit MasterRouterSwap(amounts, address(0), 0);
     }
 
     function _unwrapAndTransfer(
