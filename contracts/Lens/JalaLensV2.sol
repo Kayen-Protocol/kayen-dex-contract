@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "./interfaces/IChilizWrappedERC20.sol";
-import "./interfaces/IChilizWrapperFactory.sol";
-import "./interfaces/IJalaFactory.sol";
-import "./libraries/JalaLibrary.sol";
+import "../interfaces/IChilizWrappedERC20.sol";
+import "../interfaces/IChilizWrapperFactory.sol";
+import "../interfaces/IJalaFactory.sol";
+import "../libraries/JalaLibrary.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract JalaLensV2 is Initializable {
