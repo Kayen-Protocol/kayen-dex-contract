@@ -21,6 +21,7 @@ contract JalaFactory is IJalaFactory {
     address[] public override allPairs;
 
     constructor(address _feeToSetter) {
+        require(_feeToSetter != address(0), "JF: ZERO_ADDRESS");
         feeToSetter = _feeToSetter;
         flashOn = false;
         feeTo = DEAD;
@@ -58,11 +59,13 @@ contract JalaFactory is IJalaFactory {
     }
 
     function setFeeTo(address _feeTo) external onlyFeeToSetter {
+        require(_feeTo != address(0), "JF: ZERO_ADDRESS");
         feeTo = _feeTo;
         emit SetFeeTo(feeTo);
     }
 
     function setFeeToSetter(address _feeToSetter) external onlyFeeToSetter {
+        require(_feeToSetter != address(0), "JF: ZERO_ADDRESS");
         address oldFeeToSetter = feeToSetter;
         feeToSetter = _feeToSetter;
         emit SetFeeToSetter(oldFeeToSetter, _feeToSetter);

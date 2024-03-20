@@ -15,6 +15,10 @@ contract JalaLensV2 is Initializable {
     error InvalidPath();
 
     function initialize(address _factory, address _wrapperFactory, address _WETH) public initializer {
+        require(_factory != address(0), "JL: ZERO_ADDRESS");
+        require(_wrapperFactory != address(0), "JL: ZERO_ADDRESS");
+        require(_WETH != address(0), "JL: ZERO_ADDRESS");
+
         factory = _factory;
         wrapperFactory = _wrapperFactory;
         WETH = _WETH;

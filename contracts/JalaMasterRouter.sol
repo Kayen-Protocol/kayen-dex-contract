@@ -19,6 +19,11 @@ contract JalaMasterRouter is IJalaMasterRouter {
     address public immutable wrapperFactory;
 
     constructor(address _factory, address _wrapperFactory, address _router, address _WETH) {
+        require(_factory != address(0), "JMR: ZERO_ADDRESS");
+        require(_wrapperFactory != address(0), "JMR: ZERO_ADDRESS");
+        require(_router != address(0), "JMR: ZERO_ADDRESS");
+        require(_WETH != address(0), "JMR: ZERO_ADDRESS");
+
         factory = _factory;
         wrapperFactory = _wrapperFactory;
         router = _router;
