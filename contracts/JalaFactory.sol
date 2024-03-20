@@ -79,6 +79,7 @@ contract JalaFactory is IJalaFactory {
     }
 
     function setFlashFee(uint _flashFee) external onlyFeeToSetter {
+        require(_flashFee <= 10000, "JF: !MaxFee");
         flashFee = _flashFee;
         emit SetFlashFee(_flashFee);
     }
