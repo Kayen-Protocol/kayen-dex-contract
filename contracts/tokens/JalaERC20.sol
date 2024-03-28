@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity ^0.8.0;
+
+import "../utils/cryptography/ECDSA.sol";
 
 contract JalaERC20 {
     string public constant name = "Jala LP";
@@ -110,7 +111,7 @@ contract JalaERC20 {
                 keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
             )
         );
-        address recoveredAddress = ecrecover(digest, v, r, s);
+        (address recoveredAddress, , ) = ECDSA.tryRecover(digest, v, r, s);
         require(recoveredAddress != address(0) && recoveredAddress == owner, "UniswapV2: INVALID_SIGNATURE");
         _approve(owner, spender, value);
     }
