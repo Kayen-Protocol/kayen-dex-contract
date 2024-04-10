@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IJalaRouter01 {
+interface IKayenRouter01 {
     function factory() external view returns (address);
 
     function WETH() external view returns (address);

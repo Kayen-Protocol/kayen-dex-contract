@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-import "./libraries/JalaLibrary.sol";
+import "./libraries/KayenLibrary.sol";
 import "./libraries/TransferHelper.sol";
-import "./interfaces/IJalaFactory.sol";
+import "./interfaces/IKayenFactory.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IJalaRouter02.sol";
+import "./interfaces/IKayenRouter02.sol";
 import "./interfaces/IWETH.sol";
 
-contract JalaRouter02 is IJalaRouter02 {
+contract KayenRouter02 is IKayenRouter02 {
     address public immutable override factory;
     address public immutable override WETH;
 
@@ -37,19 +37,19 @@ contract JalaRouter02 is IJalaRouter02 {
         uint256 amountBMin
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
         // create the pair if it doesn't exist yet
-        if (IJalaFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IJalaFactory(factory).createPair(tokenA, tokenB);
+        if (IKayenFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IKayenFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint256 reserveA, uint256 reserveB) = JalaLibrary.getReserves(factory, tokenA, tokenB);
+        (uint256 reserveA, uint256 reserveB) = KayenLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = JalaLibrary.quote(amountADesired, reserveA, reserveB);
+            uint256 amountBOptimal = KayenLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 if (amountBOptimal < amountBMin) revert InsufficientBAmount();
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = JalaLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint256 amountAOptimal = KayenLibrary.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
                 if (amountAOptimal < amountAMin) revert InsufficientAAmount();
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
@@ -68,10 +68,10 @@ contract JalaRouter02 is IJalaRouter02 {
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = KayenLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IJalaPair(pair).mint(to);
+        liquidity = IKayenPair(pair).mint(to);
     }
 
     function addLiquidityETH(
@@ -97,11 +97,11 @@ contract JalaRouter02 is IJalaRouter02 {
             amountTokenMin,
             amountETHMin
         );
-        address pair = JalaLibrary.pairFor(factory, token, WETH);
+        address pair = KayenLibrary.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IJalaPair(pair).mint(to);
+        liquidity = IKayenPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -116,10 +116,10 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
-        IJalaPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = IJalaPair(pair).burn(to);
-        (address token0, ) = JalaLibrary.sortTokens(tokenA, tokenB);
+        address pair = KayenLibrary.pairFor(factory, tokenA, tokenB);
+        IKayenPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint256 amount0, uint256 amount1) = IKayenPair(pair).burn(to);
+        (address token0, ) = KayenLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         if (amountA < amountAMin) revert InsufficientAAmount();
         if (amountB < amountBMin) revert InsufficientBAmount();
@@ -160,9 +160,9 @@ contract JalaRouter02 is IJalaRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
-        address pair = JalaLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = KayenLibrary.pairFor(factory, tokenA, tokenB);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IKayenPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -178,9 +178,9 @@ contract JalaRouter02 is IJalaRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountToken, uint256 amountETH) {
-        address pair = JalaLibrary.pairFor(factory, token, WETH);
+        address pair = KayenLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IKayenPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -211,9 +211,9 @@ contract JalaRouter02 is IJalaRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountETH) {
-        address pair = JalaLibrary.pairFor(factory, token, WETH);
+        address pair = KayenLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? type(uint).max : liquidity;
-        IJalaPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IKayenPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token,
             liquidity,
@@ -229,13 +229,13 @@ contract JalaRouter02 is IJalaRouter02 {
     function _swap(uint256[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = JalaLibrary.sortTokens(input, output);
+            (address token0, ) = KayenLibrary.sortTokens(input, output);
             uint256 amountOut = amounts[i + 1];
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOut)
                 : (amountOut, uint256(0));
-            address to = i < path.length - 2 ? JalaLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IJalaPair(JalaLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
+            address to = i < path.length - 2 ? KayenLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IKayenPair(KayenLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
 
@@ -246,12 +246,12 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = JalaLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
+        amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            JalaLibrary.pairFor(factory, path[0], path[1]),
+            KayenLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -264,12 +264,12 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
+        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            JalaLibrary.pairFor(factory, path[0], path[1]),
+            KayenLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -281,11 +281,11 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
-        amounts = JalaLibrary.getAmountsOut(factory, msg.value, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
+        if (path[0] != WETH) revert KayenLibrary.InvalidPath();
+        amounts = KayenLibrary.getAmountsOut(factory, msg.value, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
 
@@ -296,13 +296,13 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
-        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
+        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            JalaLibrary.pairFor(factory, path[0], path[1]),
+            KayenLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -317,13 +317,13 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
-        amounts = JalaLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
+        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
+        amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            JalaLibrary.pairFor(factory, path[0], path[1]),
+            KayenLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -337,11 +337,11 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
-        amounts = JalaLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[0] != WETH) revert KayenLibrary.InvalidPath();
+        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > msg.value) revert ExcessiveInputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -352,8 +352,8 @@ contract JalaRouter02 is IJalaRouter02 {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = JalaLibrary.sortTokens(input, output);
-            IJalaPair pair = IJalaPair(JalaLibrary.pairFor(factory, input, output));
+            (address token0, ) = KayenLibrary.sortTokens(input, output);
+            IKayenPair pair = IKayenPair(KayenLibrary.pairFor(factory, input, output));
             uint256 amountInput;
             uint256 amountOutput;
             {
@@ -363,12 +363,12 @@ contract JalaRouter02 is IJalaRouter02 {
                     ? (reserve0, reserve1)
                     : (reserve1, reserve0);
                 amountInput = IERC20(input).balanceOf(address(pair)) - reserveInput;
-                amountOutput = JalaLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
+                amountOutput = KayenLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOutput)
                 : (amountOutput, uint256(0));
-            address to = i < path.length - 2 ? JalaLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? KayenLibrary.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -380,11 +380,11 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) {
-        TransferHelper.safeTransferFrom(path[0], msg.sender, JalaLibrary.pairFor(factory, path[0], path[1]), amountIn);
+        TransferHelper.safeTransferFrom(path[0], msg.sender, KayenLibrary.pairFor(factory, path[0], path[1]), amountIn);
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         if (IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore < amountOutMin)
-            revert JalaLibrary.InsufficientOutputAmount();
+            revert KayenLibrary.InsufficientOutputAmount();
     }
 
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
@@ -393,14 +393,14 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) {
-        if (path[0] != WETH) revert JalaLibrary.InvalidPath();
+        if (path[0] != WETH) revert KayenLibrary.InvalidPath();
         uint256 amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(JalaLibrary.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amountIn));
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         if (IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore < amountOutMin)
-            revert JalaLibrary.InsufficientOutputAmount();
+            revert KayenLibrary.InsufficientOutputAmount();
     }
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -410,11 +410,11 @@ contract JalaRouter02 is IJalaRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) {
-        if (path[path.length - 1] != WETH) revert JalaLibrary.InvalidPath();
-        TransferHelper.safeTransferFrom(path[0], msg.sender, JalaLibrary.pairFor(factory, path[0], path[1]), amountIn);
+        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
+        TransferHelper.safeTransferFrom(path[0], msg.sender, KayenLibrary.pairFor(factory, path[0], path[1]), amountIn);
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint256 amountOut = IERC20(WETH).balanceOf(address(this));
-        if (amountOut < amountOutMin) revert JalaLibrary.InsufficientOutputAmount();
+        if (amountOut < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
@@ -425,7 +425,7 @@ contract JalaRouter02 is IJalaRouter02 {
         uint256 reserveA,
         uint256 reserveB
     ) public pure virtual override returns (uint256 amountB) {
-        return JalaLibrary.quote(amountA, reserveA, reserveB);
+        return KayenLibrary.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(
@@ -433,7 +433,7 @@ contract JalaRouter02 is IJalaRouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountOut) {
-        return JalaLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return KayenLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(
@@ -441,24 +441,24 @@ contract JalaRouter02 is IJalaRouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountIn) {
-        return JalaLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return KayenLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(
         uint256 amountIn,
         address[] memory path
     ) public view virtual override returns (uint256[] memory amounts) {
-        return JalaLibrary.getAmountsOut(factory, amountIn, path);
+        return KayenLibrary.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(
         uint256 amountOut,
         address[] memory path
     ) public view virtual override returns (uint256[] memory amounts) {
-        return JalaLibrary.getAmountsIn(factory, amountOut, path);
+        return KayenLibrary.getAmountsIn(factory, amountOut, path);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view virtual override returns (address) {
-        return JalaLibrary.pairFor(factory, tokenA, tokenB);
+        return KayenLibrary.pairFor(factory, tokenA, tokenB);
     }
 }

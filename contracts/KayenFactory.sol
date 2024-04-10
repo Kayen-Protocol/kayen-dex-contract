@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IJalaFactory.sol";
+import "./interfaces/IKayenFactory.sol";
 import "./libraries/SafeERC20.sol";
-import "./JalaPair.sol";
+import "./KayenPair.sol";
 
-contract JalaFactory is IJalaFactory {
+contract KayenFactory is IKayenFactory {
     using SafeERC20 for IERC20;
 
     address public constant DEAD = 0x000000000000000000000000000000000000dEaD;
@@ -37,7 +37,7 @@ contract JalaFactory is IJalaFactory {
     }
 
     function pairCodeHash() external pure returns (bytes32) {
-        return keccak256(type(JalaPair).creationCode);
+        return keccak256(type(KayenPair).creationCode);
     }
 
     function createPair(address tokenA, address tokenB) external override returns (address pair) {
@@ -45,12 +45,12 @@ contract JalaFactory is IJalaFactory {
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         if (token0 == address(0)) revert ZeroAddress();
         if (getPair[token0][token1] != address(0)) revert PairExists();
-        bytes memory bytecode = type(JalaPair).creationCode;
+        bytes memory bytecode = type(KayenPair).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        JalaPair(pair).initialize(token0, token1);
+        KayenPair(pair).initialize(token0, token1);
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);

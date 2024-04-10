@@ -3,11 +3,11 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/IChilizWrappedERC20.sol";
 import "../interfaces/IChilizWrapperFactory.sol";
-import "../interfaces/IJalaFactory.sol";
-import "../libraries/JalaLibrary.sol";
+import "../interfaces/IKayenFactory.sol";
+import "../libraries/KayenLibrary.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract JalaLensV2 is Initializable {
+contract KayenLensV2 is Initializable {
     address public factory;
     address public wrapperFactory;
     address public WETH;
@@ -26,21 +26,21 @@ contract JalaLensV2 is Initializable {
 
     function quote(uint256 amountA, address tokenA, address tokenB) public view returns (uint256 amountB) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return JalaLibrary.quote(amountA, reserveIn, reserveOut);
+        return KayenLibrary.quote(amountA, reserveIn, reserveOut);
     }
 
     function getAmountIn(uint256 amountOut, address tokenA, address tokenB) public view returns (uint256 amountIn) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return JalaLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return KayenLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountOut(uint256 amountIn, address tokenA, address tokenB) public view returns (uint256 amountOut) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return JalaLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return KayenLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     // function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts) {
-    //     return JalaLibrary.getAmountsOut(factory, amountIn, path);
+    //     return KayenLibrary.getAmountsOut(factory, amountIn, path);
     // }
 
     function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts) {
@@ -49,7 +49,7 @@ contract JalaLensV2 is Initializable {
         amounts[0] = amountIn;
         for (uint256 i; i < path.length - 1; i++) {
             (uint256 reserveIn, uint256 reserveOut) = getReserves(path[i], path[i + 1]);
-            amounts[i + 1] = JalaLibrary.getAmountOut(amounts[i], reserveIn, reserveOut);
+            amounts[i + 1] = KayenLibrary.getAmountOut(amounts[i], reserveIn, reserveOut);
         }
     }
 
@@ -70,7 +70,7 @@ contract JalaLensV2 is Initializable {
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
         uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
-        amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
+        amountOut = KayenLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         (unwrappedAmount, reminder) = _getReminder(tokenB, amountOut);
     }
 
@@ -100,21 +100,21 @@ contract JalaLensV2 is Initializable {
 
         (uint256 reserveIn, uint256 reserveOut) = getReserves(wrappedTokenA, wrappedTokenB);
 
-        amountOut = JalaLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
+        amountOut = KayenLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         if (tokenB != WETH) {
             (unwrappedAmount, reminder) = _getReminder(wrappedTokenB, amountOut);
         }
     }
 
     function getReserves(address tokenA, address tokenB) public view returns (uint256 reserveA, uint256 reserveB) {
-        (address token0, ) = JalaLibrary.sortTokens(tokenA, tokenB);
-        address pair = IJalaFactory(factory).getPair(tokenA, tokenB);
-        (uint256 reserve0, uint256 reserve1, ) = IJalaPair(pair).getReserves();
+        (address token0, ) = KayenLibrary.sortTokens(tokenA, tokenB);
+        address pair = IKayenFactory(factory).getPair(tokenA, tokenB);
+        (uint256 reserve0, uint256 reserve1, ) = IKayenPair(pair).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view returns (address) {
-        return JalaLibrary.pairFor(factory, tokenA, tokenB);
+        return KayenLibrary.pairFor(factory, tokenA, tokenB);
     }
 
     function _getReminder(

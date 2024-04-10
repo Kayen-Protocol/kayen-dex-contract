@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/IJalaPair.sol";
-import "../JalaPair.sol";
+import "../interfaces/IKayenPair.sol";
+import "../KayenPair.sol";
 
-library JalaLibrary {
+library KayenLibrary {
 
     error IdenticalAddresses();
     error ZeroAddress();
@@ -37,7 +37,7 @@ library JalaLibrary {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            keccak256(type(JalaPair).creationCode)
+                            keccak256(type(KayenPair).creationCode)
                         )
                     )
                 )
@@ -52,7 +52,7 @@ library JalaLibrary {
         address tokenB
     ) internal view returns (uint256 reserveA, uint256 reserveB) {
         (address token0, ) = sortTokens(tokenA, tokenB);
-        (uint256 reserve0, uint256 reserve1, ) = IJalaPair(pairFor(factory, tokenA, tokenB)).getReserves();
+        (uint256 reserve0, uint256 reserve1, ) = IKayenPair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 

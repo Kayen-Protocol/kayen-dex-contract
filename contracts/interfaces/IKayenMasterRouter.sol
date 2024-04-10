@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IJalaMasterRouter {
+interface IKayenMasterRouter {
     error InsufficientBAmount();
     error InsufficientAAmount();
 

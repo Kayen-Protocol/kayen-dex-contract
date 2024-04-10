@@ -2,17 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IJalaRouter02.sol";
-import "./interfaces/IJalaMasterRouter.sol";
+import "./interfaces/IKayenRouter02.sol";
+import "./interfaces/IKayenMasterRouter.sol";
 import "./interfaces/IChilizWrapperFactory.sol";
 import "./interfaces/IChilizWrappedERC20.sol";
 import "./interfaces/IWETH.sol";
-import "./libraries/JalaLibrary.sol";
+import "./libraries/KayenLibrary.sol";
 import "./libraries/TransferHelper.sol";
 
 // This is a Master Router contract that wrap under 18 decimal token
 // and interact with router to addliqudity and swap tokens.
-contract JalaMasterRouter is IJalaMasterRouter {
+contract KayenMasterRouter is IKayenMasterRouter {
     address public immutable factory;
     address public immutable WETH;
     address public immutable router;
@@ -59,7 +59,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         IERC20(wrappedTokenB).approve(router, IERC20(wrappedTokenB).balanceOf(address(this)));
 
         // add liquidity
-        (amountA, amountB, liquidity) = IJalaRouter02(router).addLiquidity(
+        (amountA, amountB, liquidity) = IKayenRouter02(router).addLiquidity(
             wrappedTokenA,
             wrappedTokenB,
             amountADesired * tokenAOffset,
@@ -89,7 +89,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
 
         IERC20(wrappedToken).approve(router, IERC20(wrappedToken).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
 
-        (amountToken, amountETH, liquidity) = IJalaRouter02(router).addLiquidityETH{value: msg.value}(
+        (amountToken, amountETH, liquidity) = IKayenRouter02(router).addLiquidityETH{value: msg.value}(
             wrappedToken,
             amountTokenDesired * tokenOffset,
             amountTokenMin * tokenOffset,
@@ -114,12 +114,12 @@ contract JalaMasterRouter is IJalaMasterRouter {
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
         address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
         address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
-        address pair = JalaLibrary.pairFor(factory, wrappedTokenA, wrappedTokenB);
+        address pair = KayenLibrary.pairFor(factory, wrappedTokenA, wrappedTokenB);
         TransferHelper.safeTransferFrom(pair, msg.sender, address(this), liquidity);
 
         IERC20(pair).approve(router, liquidity);
 
-        (amountA, amountB) = IJalaRouter02(router).removeLiquidity(
+        (amountA, amountB) = IKayenRouter02(router).removeLiquidity(
             wrappedTokenA,
             wrappedTokenB,
             liquidity,
@@ -162,12 +162,12 @@ contract JalaMasterRouter is IJalaMasterRouter {
         uint256 deadline
     ) public virtual override returns (uint256 amountToken, uint256 amountETH) {
         address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(token);
-        address pair = JalaLibrary.pairFor(factory, wrappedToken, address(WETH));
+        address pair = KayenLibrary.pairFor(factory, wrappedToken, address(WETH));
         TransferHelper.safeTransferFrom(pair, msg.sender, address(this), liquidity);
 
         IERC20(pair).approve(router, liquidity);
 
-        (amountToken, amountETH) = IJalaRouter02(router).removeLiquidityETH(
+        (amountToken, amountETH) = IKayenRouter02(router).removeLiquidityETH(
             wrappedToken,
             liquidity,
             amountTokenMin,
@@ -209,7 +209,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-        amounts = IJalaRouter02(router).swapExactTokensForTokens(
+        amounts = IKayenRouter02(router).swapExactTokensForTokens(
             IERC20(wrappedTokenIn).balanceOf(address(this)),
             amountOutMin,
             path,
@@ -234,14 +234,14 @@ contract JalaMasterRouter is IJalaMasterRouter {
     //     address wrappedTokenOut = path[path.length - 1];
     //     uint256 tokenOutOffset = IChilizWrappedERC20(wrappedTokenOut).getDecimalsOffset();
 
-    //     amounts = JalaLibrary.getAmountsIn(factory, amountOut*tokenOutOffset, path);
+    //     amounts = KayenLibrary.getAmountsIn(factory, amountOut*tokenOutOffset, path);
 
     //     TransferHelper.safeTransferFrom(originTokenAddress, msg.sender, address(this), amounts[0]);
     //     IERC20(originTokenAddress).approve(wrapperFactory, amounts[0]); // no need for check return value, bc addliquidity will revert if approve was declined.
     //     IChilizWrapperFactory(wrapperFactory).wrap(address(this), originTokenAddress, amounts[0]);
     //     IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-    //     IJalaRouter02(router).swapTokensForExactTokens( // no need to get return value
+    //     IKayenRouter02(router).swapTokensForExactTokens( // no need to get return value
     //         amountOut*tokenOutOffset,
     //         amountInMax,
     //         path,
@@ -278,7 +278,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         override
         returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder)
     {
-        amounts = IJalaRouter02(router).swapExactETHForTokens{value: msg.value}(
+        amounts = IKayenRouter02(router).swapExactETHForTokens{value: msg.value}(
             amountOutMin,
             path,
             address(this),
@@ -304,7 +304,7 @@ contract JalaMasterRouter is IJalaMasterRouter {
         _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-        amounts = IJalaRouter02(router).swapExactTokensForETH(
+        amounts = IKayenRouter02(router).swapExactTokensForETH(
             IERC20(wrappedTokenIn).balanceOf(address(this)),
             amountOutMin,
             path,

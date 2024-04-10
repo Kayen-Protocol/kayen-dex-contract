@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../utils/cryptography/ECDSA.sol";
 
-contract JalaERC20 {
-    string public constant name = "Jala LP";
-    string public constant symbol = "Jala-LP";
+contract KayenERC20 {
+    string public constant name = "Kayen LP";
+    string public constant symbol = "Kayen-LP";
     uint8 public constant decimals = 18;
 
     uint256 public totalSupply;

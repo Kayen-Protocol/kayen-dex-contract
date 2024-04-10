@@ -2,22 +2,22 @@
 
 pragma solidity ^0.8.0;
 
-import "./tokens/JalaERC20.sol";
+import "./tokens/KayenERC20.sol";
 import "./libraries/Math.sol";
 import "./libraries/UQ112x112.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IJalaFactory.sol";
+import "./interfaces/IKayenFactory.sol";
 
 interface IMigrator {
     // Return the desired amount of liquidity token that the migrator wants.
     function desiredLiquidity() external view returns (uint256);
 }
 
-interface IJalaCallee {
-    function JalaCall(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external;
+interface IKayenCallee {
+    function KayenCall(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external;
 }
 
-contract JalaPair is JalaERC20 {
+contract KayenPair is KayenERC20 {
     error Locked();
     error TransferFailed();
     error Forbidden();
@@ -108,7 +108,7 @@ contract JalaPair is JalaERC20 {
 
     // if fee is on, mint liquidity equivalent to 1/2th of the growth in sqrt(k)
     function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
-        address feeTo = IJalaFactory(factory).feeTo(); // get feeTo address
+        address feeTo = IKayenFactory(factory).feeTo(); // get feeTo address
         feeOn = feeTo != address(0);
         uint256 _kLast = kLast; // gas savings
         if (feeOn) {
@@ -139,7 +139,7 @@ contract JalaPair is JalaERC20 {
         bool feeOn = _mintFee(_reserve0, _reserve1);
         uint256 _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
-            if (IJalaFactory(factory).migrators(msg.sender)) {
+            if (IKayenFactory(factory).migrators(msg.sender)) {
                 liquidity = IMigrator(msg.sender).desiredLiquidity();
                 if (liquidity == 0 || liquidity == type(uint).max) revert BadDesiredLiquidity();
             } else {
@@ -221,24 +221,24 @@ contract JalaPair is JalaERC20 {
             if (to == _token0 || to == _token1) revert InvalidTo();
             if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out); // optimistically transfer tokens
             if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out); // optimistically transfer tokens
-            if (IJalaFactory(factory).flashOn() && data.length > 0) {
+            if (IKayenFactory(factory).flashOn() && data.length > 0) {
                 if (amount0Out > 0) {
                     _safeTransfer(
                         _token0,
-                        IJalaFactory(factory).feeTo(),
-                        (amount0Out * IJalaFactory(factory).flashFee()) / 10000
+                        IKayenFactory(factory).feeTo(),
+                        (amount0Out * IKayenFactory(factory).flashFee()) / 10000
                     );
-                    amount0Out = (amount0Out * (10000 + IJalaFactory(factory).flashFee())) / 10000;
+                    amount0Out = (amount0Out * (10000 + IKayenFactory(factory).flashFee())) / 10000;
                 }
                 if (amount1Out > 0) {
                     _safeTransfer(
                         _token1,
-                        IJalaFactory(factory).feeTo(),
-                        (amount1Out * IJalaFactory(factory).flashFee()) / 10000
+                        IKayenFactory(factory).feeTo(),
+                        (amount1Out * IKayenFactory(factory).flashFee()) / 10000
                     );
-                    amount1Out = (amount1Out * (10000 + IJalaFactory(factory).flashFee())) / 10000;
+                    amount1Out = (amount1Out * (10000 + IKayenFactory(factory).flashFee())) / 10000;
                 }
-                IJalaCallee(to).JalaCall(msg.sender, amount0Out, amount1Out, data);
+                IKayenCallee(to).KayenCall(msg.sender, amount0Out, amount1Out, data);
             }
             balance0 = IERC20(_token0).balanceOf(address(this));
             balance1 = IERC20(_token1).balanceOf(address(this));
