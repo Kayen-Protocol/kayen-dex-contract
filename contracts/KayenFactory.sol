@@ -71,10 +71,10 @@ contract KayenFactory is IKayenFactory {
         emit SetFeeToSetter(oldFeeToSetter, _feeToSetter);
     }
 
-    function setMigrator(address _migrator, bool _state) external onlyFeeToSetter {
-        migrators[_migrator] = _state;
-        emit SetMigrator(_migrator, _state);
-    }
+    // function setMigrator(address _migrator, bool _state) external onlyFeeToSetter {
+    //     migrators[_migrator] = _state;
+    //     emit SetMigrator(_migrator, _state);
+    // }
 
     function setFlashOn(bool _flashOn) external onlyFeeToSetter {
         flashOn = _flashOn;
