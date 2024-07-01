@@ -3,25 +3,25 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../contracts/JalaFactory.sol";
-import "../contracts/JalaPair.sol";
-import "../contracts/JalaRouter02.sol";
-import "../contracts/interfaces/IJalaRouter02.sol";
+import "../contracts/KayenFactory.sol";
+import "../contracts/KayenPair.sol";
+import "../contracts/KayenRouter02.sol";
+import "../contracts/interfaces/IKayenRouter02.sol";
 import "../contracts/mocks/ERC20Mintable_decimal.sol";
 import "../contracts/mocks/MockWETH.sol";
-import "../contracts/JalaMasterRouter.sol";
+import "../contracts/KayenMasterRouter.sol";
 import "../contracts/utils/ChilizWrapperFactory.sol";
 import "../contracts/interfaces/IChilizWrapperFactory.sol";
-import "../contracts/libraries/JalaLibrary.sol";
+import "../contracts/libraries/KayenLibrary.sol";
 
 // @add assertions
-contract JalaMasterRouter_Test is Test {
+contract KayenMasterRouter_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    JalaRouter02 public router;
-    JalaMasterRouter public masterRouter;
-    JalaFactory public factory;
+    KayenRouter02 public router;
+    KayenMasterRouter public masterRouter;
+    KayenFactory public factory;
     IChilizWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA;
@@ -33,10 +33,10 @@ contract JalaMasterRouter_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new JalaFactory(feeSetter);
-        router = new JalaRouter02(address(factory), address(WETH));
+        factory = new KayenFactory(feeSetter);
+        router = new KayenRouter02(address(factory), address(WETH));
         wrapperFactory = new ChilizWrapperFactory();
-        masterRouter = new JalaMasterRouter(address(factory), address(wrapperFactory), address(router), address(WETH));
+        masterRouter = new KayenMasterRouter(address(factory), address(wrapperFactory), address(router), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB = new ERC20Mintable("Token B", "TKNB", 0);
@@ -65,7 +65,7 @@ contract JalaMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA)),
             wrapperFactory.wrappedTokenFor(address(tokenB))
         );
-        uint256 liquidity = JalaPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         // assertEq(liquidity, 10000000 * 1e18 - 1000);
     }
@@ -76,22 +76,93 @@ contract JalaMasterRouter_Test is Test {
         masterRouter.wrapTokenAndaddLiquidityETH{value: 1 ether}(address(tokenA), 1, 1, 1, user0, block.timestamp);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA)), address(WETH));
-        uint256 liquidity = JalaPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         assertEq(liquidity, 1 ether - 1000);
     }
 
-    function test_RemoveLiquidity() public {
-        tokenA.approve(address(masterRouter), 10000000);
-        tokenB.approve(address(masterRouter), 10000000);
+    function test_SwapExactTokensForTokens_Loss() public {
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
+
+        //FAN tokens have 0 decimals
+        assertEq(tokenA.decimals(), 0);
+
+        // Bob wants to trade his FAN token
+        address _bob = address(101);
+
+        tokenA.approve(address(masterRouter), 10 ether);
+        tokenB.approve(address(masterRouter), 10 ether);
+
+        // Transfer bob 100 A-FAN tokens
+        tokenA.transfer(_bob, 100);
+
+        // Provide 200 FAN tokens in liquidity to pool
+        uint256 liquidityIn = 200;
 
         masterRouter.wrapTokensAndaddLiquidity(
             address(tokenA),
             address(tokenB),
-            10000000,
-            10000000,
-            10000000,
-            10000000,
+            liquidityIn,
+            liquidityIn,
+            liquidityIn,
+            liquidityIn,
+            address(this),
+            block.timestamp
+        );
+
+        address pairAddress = factory.getPair(
+            wrapperFactory.wrappedTokenFor(address(tokenA)),
+            wrapperFactory.wrappedTokenFor(address(tokenB))
+        );
+
+        // Make sure pool is balanced
+        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
+
+        assertEq(_reserve0, _reserve1);
+        assertEq(_reserve0, liquidityIn * IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset());
+        assertEq(_reserve1, liquidityIn * IChilizWrappedERC20(wrappedTokenB).getDecimalsOffset());
+
+        // Bob swaps 1 A-FAN token for B-FAN token
+        vm.startPrank(_bob);
+
+        tokenA.approve(address(masterRouter), 100);
+
+        address[] memory path = new address[](2);
+        path[0] = wrappedTokenA;
+        path[1] = wrappedTokenB;
+
+        // Slippage does not work
+        // Bob wants to receive at least 1 token => 1e18
+        uint256 minTokenReceived = 1e18; // 1 wrapped token is 1 FAN token
+        vm.expectRevert(); //InsufficientOutputAmount()
+        masterRouter.swapExactTokensForTokens(address(tokenA), 1, minTokenReceived, path, _bob, block.timestamp);
+
+        // Bob must execute the swap without any slippage
+        (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) = masterRouter
+            .swapExactTokensForTokens(address(tokenA), 1, 0, path, _bob, block.timestamp);
+        vm.stopPrank();
+
+        // Bob send 1 A-FAN token
+        assertEq(tokenA.balanceOf(_bob), 99);
+        // BUT received 0 B-FAN tokens
+        assertEq(tokenB.balanceOf(_bob), 0);
+        console2.log(tokenA.balanceOf(_bob));
+        console2.log(tokenB.balanceOf(_bob));
+        console2.log(IERC20(wrappedTokenB).balanceOf(_bob));
+    }
+
+    function test_RemoveLiquidity() public {
+        tokenA.approve(address(masterRouter), 20000000);
+        tokenB.approve(address(masterRouter), 20000000);
+
+        masterRouter.wrapTokensAndaddLiquidity(
+            address(tokenA),
+            address(tokenB),
+            20000000,
+            20000000,
+            20000000,
+            20000000,
             user0,
             block.timestamp
         );
@@ -99,7 +170,7 @@ contract JalaMasterRouter_Test is Test {
         address wrappedTokenA = wrapperFactory.wrappedTokenFor(address(tokenA));
         address wrappedTokenB = wrapperFactory.wrappedTokenFor(address(tokenB));
         address pairAddress = factory.getPair(address(wrappedTokenA), address(wrappedTokenB));
-        JalaPair pair = JalaPair(pairAddress);
+        KayenPair pair = KayenPair(pairAddress);
         uint256 liquidity = pair.balanceOf(user0);
 
         vm.startPrank(user0);
@@ -147,7 +218,7 @@ contract JalaMasterRouter_Test is Test {
 
     //     address wrappedTokenA = wrapperFactory.wrappedTokenFor(address(tokenA));
     //     address pairAddress = factory.getPair(address(wrappedTokenA), address(WETH));
-    //     JalaPair pair = JalaPair(pairAddress);
+    //     KayenPair pair = KayenPair(pairAddress);
     //     uint256 liquidity = pair.balanceOf(user0);
 
     //     console.log(1, pair.balanceOf(user0));
@@ -179,10 +250,10 @@ contract JalaMasterRouter_Test is Test {
         masterRouter.wrapTokensAndaddLiquidity(
             address(tokenA),
             address(tokenB),
-            20000000,
-            20000000,
-            20000000,
-            20000000,
+            10000000,
+            10000000,
+            10000000,
+            10000000,
             address(this),
             block.timestamp
         );
@@ -191,8 +262,8 @@ contract JalaMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA)),
             wrapperFactory.wrappedTokenFor(address(tokenB))
         );
-        uint256 a = JalaPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = JalaPair(pairAddress).getReserves();
+        uint256 a = KayenPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -215,7 +286,7 @@ contract JalaMasterRouter_Test is Test {
         console.log(rmadr, reminder);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = JalaPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         console.log(11, tokenA.balanceOf(address(this)));
@@ -281,8 +352,8 @@ contract JalaMasterRouter_Test is Test {
         router.addLiquidityETH{value: 100 ether}(wrappedTokenA, 100 ether, 0, 0, address(this), type(uint40).max);
 
         address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
-        uint256 a = JalaPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = JalaPair(pairAddress).getReserves();
+        uint256 a = KayenPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -299,7 +370,7 @@ contract JalaMasterRouter_Test is Test {
         masterRouter.swapExactETHForTokens{value: 5 ether}(0, path, user0, type(uint40).max);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = JalaPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         console.log(11, WETH.balanceOf(user0));
@@ -319,8 +390,8 @@ contract JalaMasterRouter_Test is Test {
 
         address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
 
-        uint256 pairBalance = JalaPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = JalaPair(pairAddress).getReserves();
+        uint256 pairBalance = KayenPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -336,7 +407,7 @@ contract JalaMasterRouter_Test is Test {
         masterRouter.swapExactTokensForETH(address(tokenA), 550, 0, path, user0, type(uint40).max);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = JalaPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         // console.log(11, WETH.balanceOf(user0));
@@ -344,6 +415,71 @@ contract JalaMasterRouter_Test is Test {
         console.log(22, tokenA.balanceOf(user0));
         console.log(33, IERC20(wrappedTokenA).balanceOf(user0));
     }
+
+    function test_SwapETHForExactTokensInteger() public {
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+
+        tokenA.approve(address(wrapperFactory), type(uint256).max);
+        wrapperFactory.wrap(address(this), address(tokenA), 100);
+
+        IERC20(wrappedTokenA).approve(address(router), 100 ether);
+        router.addLiquidityETH{value: 100 ether}(wrappedTokenA, 100 ether, 0, 0, address(this), type(uint40).max);
+
+        address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = wrappedTokenA;
+
+        vm.startPrank(user0);
+        vm.deal(user0, 100 ether);
+
+        uint256 beforebalanceAtoken = IERC20(tokenA).balanceOf(user0);
+
+        masterRouter.swapETHForExactTokens{value: 1.05 ether}(1 ether, path, user0, type(uint40).max);
+        vm.stopPrank();
+
+        uint256 afterbalanceAtoken = IERC20(tokenA).balanceOf(user0);
+        assertEq(beforebalanceAtoken, afterbalanceAtoken - 1);
+    }
+
+    function test_SwapETHForExactTokensNotInteger() public {
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+
+        tokenA.approve(address(wrapperFactory), type(uint256).max);
+        wrapperFactory.wrap(address(this), address(tokenA), 100);
+
+        IERC20(wrappedTokenA).approve(address(router), 100 ether);
+        router.addLiquidityETH{value: 100 ether}(wrappedTokenA, 100 ether, 0, 0, address(this), type(uint40).max);
+
+        address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = wrappedTokenA;
+
+        vm.startPrank(user0);
+        vm.deal(user0, 100 ether);
+
+        uint256 beforebalanceAtoken = IERC20(tokenA).balanceOf(user0);
+        uint256 beforebalanceWrappedAtoken = IERC20(wrappedTokenA).balanceOf(user0);
+        uint256 beforeBalanceETH = address(user0).balance;
+        (uint256[] memory amounts, , ) = masterRouter.swapETHForExactTokens{value: 1.2 ether}(
+            1.1 ether,
+            path,
+            user0,
+            type(uint40).max
+        );
+        vm.stopPrank();
+
+        uint256 afterbalanceAtoken = IERC20(tokenA).balanceOf(user0);
+        uint256 afterbalanceWrappedAtoken = IERC20(wrappedTokenA).balanceOf(user0);
+        uint256 afterBalanceETH = address(user0).balance;
+
+        assertEq(beforeBalanceETH - amounts[0], afterBalanceETH);
+        assertEq(beforebalanceAtoken, afterbalanceAtoken - 1);
+        assertEq(beforebalanceWrappedAtoken, afterbalanceWrappedAtoken - 0.1 ether);
+    }
 }
 
-// forge test --match-path test/JalaMasterRouter.t.sol -vvvv
+// forge test --match-path test/KayenMasterRouter.t.sol -vvvv

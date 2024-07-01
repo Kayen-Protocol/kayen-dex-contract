@@ -35,7 +35,6 @@ contract KayenMasterRouter is IKayenMasterRouter {
     }
 
     function wrapTokensAndaddLiquidity(
-        // only use wrapTokensAndaddLiquidity to create pool.
         address tokenA, // origin token
         address tokenB, // origin token
         uint256 amountADesired, // unwrapped.
@@ -312,6 +311,24 @@ contract KayenMasterRouter is IKayenMasterRouter {
             deadline
         );
         emit MasterRouterSwap(amounts, address(0), 0);
+    }
+
+    function swapETHForExactTokens(
+        uint256 amountOut,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
+        amounts = IKayenRouter02(router).swapETHForExactTokens{value: msg.value}(
+            amountOut,
+            path,
+            address(this),
+            deadline
+        );
+
+        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
+        if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
+        emit MasterRouterSwap(amounts, reminderTokenAddress, reminder);
     }
 
     function _unwrapAndTransfer(
