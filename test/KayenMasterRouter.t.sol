@@ -435,12 +435,15 @@ contract KayenMasterRouter_Test is Test {
         vm.deal(user0, 100 ether);
 
         uint256 beforebalanceAtoken = IERC20(tokenA).balanceOf(user0);
+        uint256 beforeBalanceETH = address(user0).balance;
 
         masterRouter.swapETHForExactTokens{value: 1.05 ether}(1 ether, path, user0, type(uint40).max);
         vm.stopPrank();
 
         uint256 afterbalanceAtoken = IERC20(tokenA).balanceOf(user0);
         assertEq(beforebalanceAtoken, afterbalanceAtoken - 1);
+        assertEq(IERC20(wrappedTokenA).balanceOf(user0), 0);
+        assertEq(beforeBalanceETH - address(user0).balance < 1.05 ether, true);
     }
 
     function test_SwapETHForExactTokensNotInteger() public {
@@ -476,6 +479,7 @@ contract KayenMasterRouter_Test is Test {
         uint256 afterbalanceWrappedAtoken = IERC20(wrappedTokenA).balanceOf(user0);
         uint256 afterBalanceETH = address(user0).balance;
 
+        assertEq(IERC20(wrappedTokenA).balanceOf(user0), 0.1 ether);
         assertEq(beforeBalanceETH - amounts[0], afterBalanceETH);
         assertEq(beforebalanceAtoken, afterbalanceAtoken - 1);
         assertEq(beforebalanceWrappedAtoken, afterbalanceWrappedAtoken - 0.1 ether);
