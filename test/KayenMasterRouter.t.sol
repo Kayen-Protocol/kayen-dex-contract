@@ -484,6 +484,46 @@ contract KayenMasterRouter_Test is Test {
         assertEq(beforebalanceAtoken, afterbalanceAtoken - 1);
         assertEq(beforebalanceWrappedAtoken, afterbalanceWrappedAtoken - 0.1 ether);
     }
+
+    function test_SwapETHForExactTokensMinimumAmount() public {
+        // Setup similar to previous tests
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+
+        // Add liquidity to the pool
+        tokenA.approve(address(wrapperFactory), type(uint256).max);
+        wrapperFactory.wrap(address(this), address(tokenA), 100 ether);
+        IERC20(wrappedTokenA).approve(address(router), 100 ether);
+        router.addLiquidityETH{value: 100 ether}(wrappedTokenA, 100 ether, 0, 0, address(this), type(uint40).max);
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = wrappedTokenA;
+
+        vm.startPrank(user0);
+        vm.deal(user0, 1 ether);
+
+        uint256 minAmountOut = 1; // 1 wei of tokenA
+        uint256 beforeBalanceETH = address(user0).balance;
+        uint256 beforeBalanceTokenA = IERC20(tokenA).balanceOf(user0);
+        uint256 beforeBalanceWrappedTokenA = IERC20(wrappedTokenA).balanceOf(user0);
+
+        (uint256[] memory amounts, , ) = masterRouter.swapETHForExactTokens{value: 1 ether}(
+            minAmountOut,
+            path,
+            user0,
+            type(uint40).max
+        );
+
+        uint256 afterBalanceETH = address(user0).balance;
+        uint256 afterBalanceTokenA = IERC20(tokenA).balanceOf(user0);
+        uint256 afterBalanceWrappedTokenA = IERC20(wrappedTokenA).balanceOf(user0);
+
+        assertEq(afterBalanceTokenA, beforeBalanceTokenA);
+        assertEq(beforeBalanceWrappedTokenA, afterBalanceWrappedTokenA - minAmountOut);
+        assertEq(beforeBalanceETH - afterBalanceETH, amounts[0]);
+        assertLt(amounts[0], 1 ether); // Ensure some ETH is returned
+        assertEq(IERC20(wrappedTokenA).balanceOf(user0), 1); // Ensure all wrapped tokens are unwrapped
+    }
 }
 
 // forge test --match-path test/KayenMasterRouter.t.sol -vvvv
