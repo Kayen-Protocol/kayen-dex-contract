@@ -158,5 +158,26 @@ contract KayenFee_Test is Test {
         console.log("User Fee Precentage TokenB:", ReceiverfeePercentageTokenB);
         console.log(FeeToPercentageTokenA + ReceiverfeePercentageTokenA);
         console.log(FeeToPercentageTokenB + ReceiverfeePercentageTokenB);
+
+        /**
+         * 가중 평균 계산*
+        각 토큰의 가중치 계산:
+
+        토큰 A의 가중치: 2494972829418506131589 / 5987399054236568158117 = 0.4167
+        토큰 B의 가중치: 3492426224818062026528 / 5987399054236568158117 = 0.5833
+
+
+        각 토큰의 fee 비율에 가중치 적용:
+        Protocol fee:
+        토큰 A: 59.82% * 0.4167 = 24.93%
+        토큰 B: 42.95% * 0.5833 = 25.05%
+        User fee:
+        토큰 A: 40.18% * 0.4167 = 16.74%
+        토큰 B: 57.05% * 0.5833 = 33.28%
+
+        가중치가 적용된 값들의 합계:
+        Protocol fee: 24.93% + 25.05% = 49.98%
+        User fee: 16.74% + 33.28% = 50.02%
+*/
     }
 }
