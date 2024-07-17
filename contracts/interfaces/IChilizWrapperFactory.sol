@@ -25,4 +25,6 @@ interface IChilizWrapperFactory {
     function wrappedTokenFor(address underlyingToken) external view returns (address);
 
     function getUnderlyingToWrapped(address underlyingToken) external view returns (address);
+    
+    function wrappedToUnderlying(address wrappedToken) external view returns (address);
 }
