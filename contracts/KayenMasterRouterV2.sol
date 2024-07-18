@@ -84,7 +84,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         TransferHelper.safeTransfer(adjustedTokenB, pair, amountB);
         liquidity = IKayenPair(pair).mint(to);
 
-        // TODO: return dust
+        // return dust
         _returnUnwrappedTokenAndDust(adjustedTokenA, msg.sender, wrapTokenA, decimalsOffsetA);
         _returnUnwrappedTokenAndDust(adjustedTokenB, msg.sender, wrapTokenB, decimalsOffsetB);
 
@@ -143,14 +143,19 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) public virtual ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        (address adjustedTokenA, address adjustedTokenB, uint256 amount0, uint256 amount1) = _removeLiquidity(
-            tokenA,
-            tokenB,
+        address adjustedTokenA = isTokenAWrapped
+            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenA)
+            : tokenA;
+        address adjustedTokenB = isTokenBWrapped
+            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenB)
+            : tokenB;
+
+        (uint256 amount0, uint256 amount1) = _removeLiquidity(
+            adjustedTokenA,
+            adjustedTokenB,
             liquidity,
             amountAMin,
-            amountBMin,
-            isTokenAWrapped,
-            isTokenBWrapped
+            amountBMin
         );
 
         // unwrap and return tokens
@@ -171,23 +176,25 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) public virtual ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        (address adjustedToken, , uint256 returnedAmountToken, uint256 returnedAmoutnETH) = _removeLiquidity(
-            token,
+        address adjustedToken = isTokenWrapped
+            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(token)
+            : token;
+
+        (uint256 amountTokenReturned, uint256 amountETHReturned) = _removeLiquidity(
+            adjustedToken,
             WETH,
             liquidity,
             amountTokenMin,
-            amountETHMin,
-            isTokenWrapped,
-            false
+            amountETHMin
         );
 
-        // unwrap and return tokens
-        uint256 decimalsOffsetA = isTokenWrapped ? IChilizWrappedERC20(adjustedToken).getDecimalsOffset() : 0;
-        _returnUnwrappedTokenAndDust(adjustedToken, to, isTokenWrapped, decimalsOffsetA);
-        IWETH(WETH).withdraw(returnedAmoutnETH);
-        TransferHelper.safeTransferETH(to, returnedAmoutnETH);
+        // // unwrap and return tokens
+        uint256 decimalsOffset = isTokenWrapped ? IChilizWrappedERC20(adjustedToken).getDecimalsOffset() : 0;
+        _returnUnwrappedTokenAndDust(adjustedToken, to, isTokenWrapped, decimalsOffset);
+        IWETH(WETH).withdraw(amountETHReturned);
+        TransferHelper.safeTransferETH(to, amountETHReturned);
 
-        return (returnedAmountToken, returnedAmoutnETH);
+        return (amountTokenReturned, amountETHReturned);
     }
 
     function swapExactTokensForTokens(
@@ -347,14 +354,9 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address tokenB,
         uint256 liquidity,
         uint256 amountAMin,
-        uint256 amountBMin,
-        bool isTokenAWrapped,
-        bool isTokenBWrapped
-    ) internal returns (address adjustedTokenA, address adjustedTokenB, uint256 amountA, uint256 amountB) {
-        adjustedTokenA = isTokenAWrapped ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA) : tokenA;
-        adjustedTokenB = isTokenBWrapped ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB) : tokenB;
-
-        address pair = KayenLibrary.pairFor(factory, adjustedTokenA, adjustedTokenB);
+        uint256 amountBMin
+    ) internal returns (uint256 amountA, uint256 amountB) {
+        address pair = KayenLibrary.pairFor(factory, tokenA, tokenB);
         IKayenPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
         (uint256 amount0, uint256 amount1) = IKayenPair(pair).burn(address(this));
         (address token0, ) = KayenLibrary.sortTokens(tokenA, tokenB);
