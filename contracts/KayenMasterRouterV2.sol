@@ -197,31 +197,46 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         return (amountTokenReturned, amountETHReturned);
     }
 
+    // **** SWAP ****
+    // requires the initial amount to have already been sent to the first pair
+    function _swap(uint256[] memory amounts, address[] memory path, address _to) internal virtual {
+        for (uint256 i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            (address token0, ) = KayenLibrary.sortTokens(input, output);
+            uint256 amountOut = amounts[i + 1];
+            (uint256 amount0Out, uint256 amount1Out) = input == token0
+                ? (uint256(0), amountOut)
+                : (amountOut, uint256(0));
+            address to = i < path.length - 2 ? KayenLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IKayenPair(KayenLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
+        }
+    }
+
     function swapExactTokensForTokens(
-        address originTokenAddress,
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
+        bool isTokenInWrapped,
+        bool isTokenOutWrapped,
         address to,
         uint256 deadline
-    ) external virtual returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
-        address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
-
-        require(path[0] == wrappedTokenIn, "MS: !path");
-
-        TransferHelper.safeTransferFrom(originTokenAddress, msg.sender, address(this), amountIn);
-        _approveAndWrap(originTokenAddress, amountIn);
-        IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
-
-        amounts = IKayenRouter02(router).swapExactTokensForTokens(
-            IERC20(wrappedTokenIn).balanceOf(address(this)),
-            amountOutMin,
-            path,
-            address(this),
-            deadline
+    )
+        external
+        virtual
+        ensure(deadline)
+        returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder)
+    {
+        // handle wrapping
+        // swap
+        amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
+        TransferHelper.safeTransferFrom(
+            path[0],
+            msg.sender,
+            KayenLibrary.pairFor(factory, path[0], path[1]),
+            amounts[0]
         );
-        (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
-        emit MasterRouterSwap(amounts, reminderTokenAddress, reminder);
+        _swap(amounts, path, to);
     }
 
     function _returnUnwrappedTokenAndDust(address token, address to, bool wrapToken, uint256 decimalsOffset) private {
