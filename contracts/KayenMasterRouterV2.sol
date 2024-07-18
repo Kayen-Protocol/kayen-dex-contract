@@ -143,9 +143,17 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) public virtual ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        (address adjustedTokenA, address adjustedTokenB, uint256 amount0, uint256 amount1) = _removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, isTokenAWrapped, isTokenBWrapped);
+        (address adjustedTokenA, address adjustedTokenB, uint256 amount0, uint256 amount1) = _removeLiquidity(
+            tokenA,
+            tokenB,
+            liquidity,
+            amountAMin,
+            amountBMin,
+            isTokenAWrapped,
+            isTokenBWrapped
+        );
 
-        // unwrap tokens
+        // unwrap and return tokens
         uint256 decimalsOffsetA = isTokenAWrapped ? IChilizWrappedERC20(adjustedTokenA).getDecimalsOffset() : 0;
         uint256 decimalsOffsetB = isTokenBWrapped ? IChilizWrappedERC20(adjustedTokenB).getDecimalsOffset() : 0;
         _returnUnwrappedTokenAndDust(adjustedTokenA, to, isTokenAWrapped, decimalsOffsetA);
@@ -163,16 +171,23 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) public virtual ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        (address adjustedToken, address adjustedWETH, uint256 amountAdjustedToken, uint256 amountAdjustedWETH) = _removeLiquidity(token, WETH, liquidity, amountTokenMin, amountETHMin, isTokenWrapped, false);
+        (address adjustedToken, , uint256 returnedAmountToken, uint256 returnedAmoutnETH) = _removeLiquidity(
+            token,
+            WETH,
+            liquidity,
+            amountTokenMin,
+            amountETHMin,
+            isTokenWrapped,
+            false
+        );
 
-
-
+        // unwrap and return tokens
         uint256 decimalsOffsetA = isTokenWrapped ? IChilizWrappedERC20(adjustedToken).getDecimalsOffset() : 0;
         _returnUnwrappedTokenAndDust(adjustedToken, to, isTokenWrapped, decimalsOffsetA);
+        IWETH(WETH).withdraw(returnedAmoutnETH);
+        TransferHelper.safeTransferETH(to, returnedAmoutnETH);
 
-        // TransferHelper.safeTransfer(token, to, amountToken);
-        // IWETH(WETH).withdraw(amountETH);
-        // TransferHelper.safeTransferETH(to, amountETH);
+        return (returnedAmountToken, returnedAmoutnETH);
     }
 
     function swapExactTokensForTokens(
@@ -201,9 +216,6 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         (reminderTokenAddress, reminder) = _unwrapAndTransfer(path[path.length - 1], to);
         emit MasterRouterSwap(amounts, reminderTokenAddress, reminder);
     }
-
-
-
 
     function _returnUnwrappedTokenAndDust(address token, address to, bool wrapToken, uint256 decimalsOffset) private {
         if (wrapToken) {
@@ -330,13 +342,17 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         }
     }
 
-    function _removeLiquidity(address tokenA, address tokenB, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, bool isTokenAWrapped, bool isTokenBWrapped) internal returns (address adjustedTokenA, address adjustedTokenB, uint256 amountA, uint256 amountB){
-        adjustedTokenA = isTokenAWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA)
-            : tokenA;
-        adjustedTokenB = isTokenBWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB)
-            : tokenB;
+    function _removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        bool isTokenAWrapped,
+        bool isTokenBWrapped
+    ) internal returns (address adjustedTokenA, address adjustedTokenB, uint256 amountA, uint256 amountB) {
+        adjustedTokenA = isTokenAWrapped ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA) : tokenA;
+        adjustedTokenB = isTokenBWrapped ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB) : tokenB;
 
         address pair = KayenLibrary.pairFor(factory, adjustedTokenA, adjustedTokenB);
         IKayenPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
@@ -346,5 +362,4 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         if (amountA < amountAMin) revert InsufficientAAmount();
         if (amountB < amountBMin) revert InsufficientBAmount();
     }
-
 }
