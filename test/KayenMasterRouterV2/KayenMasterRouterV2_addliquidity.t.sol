@@ -3,17 +3,17 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../contracts/KayenFactory.sol";
-import "../contracts/KayenPair.sol";
-import "../contracts/KayenRouter02.sol";
-import "../contracts/interfaces/IKayenRouter02.sol";
-import "../contracts/mocks/ERC20Mintable_decimal.sol";
-import "../contracts/mocks/MockWETH.sol";
-import "../contracts/KayenMasterRouterV2.sol";
-import "../contracts/utils/ChilizWrapperFactory.sol";
-import "../contracts/interfaces/IChilizWrapperFactory.sol";
-import "../contracts/libraries/KayenLibrary.sol";
-import "../contracts/libraries/Math.sol";
+import "../../contracts/KayenFactory.sol";
+import "../../contracts/KayenPair.sol";
+import "../../contracts/KayenRouter02.sol";
+import "../../contracts/interfaces/IKayenRouter02.sol";
+import "../../contracts/mocks/ERC20Mintable_decimal.sol";
+import "../../contracts/mocks/MockWETH.sol";
+import "../../contracts/KayenMasterRouterV2.sol";
+import "../../contracts/utils/ChilizWrapperFactory.sol";
+import "../../contracts/interfaces/IChilizWrapperFactory.sol";
+import "../../contracts/libraries/KayenLibrary.sol";
+import "../../contracts/libraries/Math.sol";
 
 // @add assertions
 contract KayenMasterRouter_Test is Test {
@@ -60,38 +60,40 @@ contract KayenMasterRouter_Test is Test {
 
         tokenB_D18 = new ERC20Mintable("Token A", "TKNA", 18);
 
-        vm.deal(address(this), 1000 ether);
+        vm.deal(address(this), 2000000 ether);
+        vm.deal(user0, 2000000 ether);
+        vm.deal(user1, 2000000 ether);
 
-        tokenA_D0.mint(20000 ether, address(this));
-        tokenB_D0.mint(20000 ether, address(this));
-        tokenC_D0.mint(20000 ether, address(this));
+        tokenA_D0.mint(1000000 ether, address(this));
+        tokenB_D0.mint(1000000 ether, address(this));
+        tokenC_D0.mint(1000000 ether, address(this));
 
-        tokenA_D6.mint(10000 * 1e6, address(this));
-        tokenA_D18.mint(10000 * 1e18, address(this));
-        tokenB_D18.mint(10000 * 1e18, address(this));
+        tokenA_D6.mint(2000000 * 1e6, address(this));
+        tokenA_D18.mint(1000000 * 1e18, address(this));
+        tokenB_D18.mint(1000000 * 1e18, address(this));
 
-        tokenA_D0.mint(10000, user0);
-        tokenB_D0.mint(10000, user0);
-        tokenC_D0.mint(10000, user0);
+        tokenA_D0.mint(1000000, user0);
+        tokenB_D0.mint(1000000, user0);
+        tokenC_D0.mint(1000000, user0);
 
-        tokenA_D6.mint(10000 * 1e6, user0);
-        tokenA_D18.mint(10000 * 1e18, user0);
-        tokenB_D18.mint(10000 * 1e18, user0);
+        tokenA_D6.mint(1000000 * 1e6, user0);
+        tokenA_D18.mint(1000000 * 1e18, user0);
+        tokenB_D18.mint(1000000 * 1e18, user0);
 
-        tokenA_D0.mint(10000, user1);
-        tokenB_D0.mint(10000, user1);
-        tokenC_D0.mint(10000, user1);
+        tokenA_D0.mint(1000000, user1);
+        tokenB_D0.mint(1000000, user1);
+        tokenC_D0.mint(1000000, user1);
 
-        tokenA_D6.mint(10000 * 1e6, user1);
-        tokenA_D18.mint(10000 * 1e18, user1);
-        tokenB_D18.mint(10000 * 1e18, user1);
+        tokenA_D6.mint(1000000 * 1e6, user1);
+        tokenA_D18.mint(1000000 * 1e18, user1);
+        tokenB_D18.mint(1000000 * 1e18, user1);
     }
 
     function encodeError(string memory error) internal pure returns (bytes memory encoded) {
         encoded = abi.encodeWithSignature(error);
     }
 
-    /*********************
+    /**********************
      **** AddLiquidity ****
      **********************/
     function test_AddLiquidityCreatesPair() public {
@@ -525,65 +527,347 @@ contract KayenMasterRouter_Test is Test {
         assertApproxEqRel(liquidityRatio, 2e18, 0.01e18, "Liquidity ratio should be close to 2:1");
     }
 
-    // function test_WrapTokenAndAddLiquidityETH_Success() public {
-    //     tokenA_D0.approve(address(masterRouterV2), 100);
+    function test_AddLiquidityAmountBOptimalIsOk_D0_D6() public {
+        // Wrap tokenA_D0
+        tokenA_D0.approve(address(wrapperFactory), 1);
+        address wrappedTokenA_D0 = wrapperFactory.wrap(address(this), address(tokenA_D0), 1);
 
-    //     (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{value: 1 ether}(
-    //         address(tokenA_D0),
-    //         100,
-    //         90,
-    //         0.9 ether,
-    //         true,
-    //         user0,
-    //         block.timestamp
-    //     );
+        address pairAddress = factory.createPair(wrappedTokenA_D0, address(tokenA_D6));
 
-    //     assertEq(amountToken, 100);
-    //     assertEq(amountETH, 1 ether);
-    //     assertGt(liquidity, 0);
+        KayenPair pair = KayenPair(pairAddress);
 
-    //     address pairAddress = factory.getPair(
-    //         wrapperFactory.wrappedTokenFor(address(tokenA_D0)),
-    //         address(WETH)
-    //     );
-    //     assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
-    // }
+        assertEq(pair.token0(), address(tokenA_D6));
+        assertEq(pair.token1(), wrappedTokenA_D0);
+        // Approve tokens for wrapping
+        tokenA_D0.approve(address(wrapperFactory), 1000);
 
-    // function test_WrapTokenAndAddLiquidityETH_InsufficientETH() public {
-    //     tokenA_D0.approve(address(masterRouterV2), 100);
+        // Wrap tokenA_D0 and transfer to pair
+        wrapperFactory.wrap(pairAddress, address(tokenA_D0), 1000);
 
-    //     vm.expectRevert();
-    //     masterRouterV2.wrapTokenAndaddLiquidityETH{value: 0.5 ether}(
-    //         address(tokenA_D0),
-    //         100,
-    //         90,
-    //         0.9 ether,
-    //         true,
-    //         user0,
-    //         block.timestamp
-    //     );
-    // }
+        // Transfer tokenA_D6 directly to the pair
+        tokenA_D6.transfer(pairAddress, 2000000);
 
-    // function test_WrapTokenAndAddLiquidityETH_RefundExcessETH() public {
-    //     tokenA_D0.approve(address(masterRouterV2), 100);
+        // Mint initial liquidity
+        pair.mint(address(this));
+        // Check initial liquidity
+        uint256 initialLiquidity = pair.totalSupply();
+        assertGt(initialLiquidity, 0, "Initial liquidity should be greater than 0");
 
-    //     uint256 initialBalance = user0.balance;
-    //     vm.prank(user0);
-    //     (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{value: 2 ether}(
-    //         address(tokenA_D0),
-    //         100,
-    //         90,
-    //         0.9 ether,
-    //         true,
-    //         user0,
-    //         block.timestamp
-    //     );
+        // Approve tokens for masterRouterV2
+        tokenA_D0.approve(address(masterRouterV2), 1000);
+        tokenA_D6.approve(address(masterRouterV2), 2000000);
 
-    //     assertEq(amountToken, 100);
-    //     assertLt(amountETH, 2 ether);
-    //     assertGt(liquidity, 0);
-    //     assertGt(user0.balance, initialBalance - 2 ether);
-    // }
+        // Calculate expected wrapped amount for tokenA_D0
+        uint256 expectedWrappedAmountA = 1000 * 1e18; // Assuming 18 decimal places for wrapped token
+
+        (uint256 amountA, uint256 amountB, uint256 liquidity) = masterRouterV2.wrapTokensAndaddLiquidity(
+            address(tokenA_D0),
+            address(tokenA_D6),
+            1000,
+            2000000,
+            1000,
+            1900000,
+            true,
+            false,
+            address(this),
+            block.timestamp
+        );
+
+        assertEq(
+            IERC20(wrappedTokenA_D0).balanceOf(pairAddress),
+            expectedWrappedAmountA + 1000 * 1e18,
+            "Incorrect wrapped tokenA balance in pair"
+        );
+
+        assertEq(amountA, expectedWrappedAmountA, "Incorrect wrapped amount for tokenA");
+        assertEq(amountB, 2000000, "Incorrect amount for tokenB");
+        // Calculate expected liquidity
+        uint256 expectedLiquidity = Math.sqrt(amountA * amountB);
+        assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance");
+
+        // Additional checks
+        assertEq(tokenA_D0.balanceOf(pairAddress), 0, "Original tokenA should not be in the pair");
+        assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenB balance in pair");
+    }
+
+    function test_AddLiquidityAmountBOptimalIsOk_D6_D18() public {
+        address pairAddress = factory.createPair(address(tokenA_D6), address(tokenB_D18));
+
+        KayenPair pair = KayenPair(pairAddress);
+
+        // Transfer tokens directly to the pair
+        tokenA_D6.transfer(pairAddress, 1000000);
+        tokenB_D18.transfer(pairAddress, 2 ether);
+
+        // Mint initial liquidity
+        pair.mint(user0);
+        // Check initial liquidity
+        uint256 initialLiquidity = pair.totalSupply();
+        assertGt(initialLiquidity, 0, "Initial liquidity should be greater than 0");
+
+        // Approve tokens for masterRouterV2
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+        tokenB_D18.approve(address(masterRouterV2), 2 ether);
+
+        (uint256 amountA, uint256 amountB, uint256 liquidity) = masterRouterV2.wrapTokensAndaddLiquidity(
+            address(tokenA_D6),
+            address(tokenB_D18),
+            1000000,
+            2 ether,
+            1000000,
+            1.9 ether,
+            false,
+            false,
+            address(this),
+            block.timestamp
+        );
+
+        assertEq(amountA, 1000000, "Incorrect amount for tokenA");
+        assertEq(amountB, 2 ether, "Incorrect amount for tokenB");
+        // Calculate expected liquidity
+        uint256 expectedLiquidity = Math.sqrt(amountA * amountB);
+        assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance");
+
+        // Additional checks
+        assertEq(tokenA_D6.balanceOf(pairAddress), 2000000, "Incorrect tokenA balance in pair");
+        assertEq(tokenB_D18.balanceOf(pairAddress), 4 ether, "Incorrect tokenB balance in pair");
+    }
+
+    /**********************
+     ** AddLiquidity ETH **
+     **********************/
+    function test_AddLiquidityETH_CreatesPair() public {
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 1 ether
+        }(address(tokenA_D6), 1000000, 900000, 0.9 ether, false, user0, block.timestamp);
+
+        address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
+        uint256 userLiquidity = KayenPair(pairAddress).balanceOf(user0);
+
+        console.log("Amount Token:", amountToken);
+        console.log("Amount ETH:", amountETH);
+        console.log("Liquidity:", liquidity);
+        console.log("User Liquidity:", userLiquidity);
+
+        assertGt(userLiquidity, 0, "User should have received liquidity tokens");
+
+        assertEq(tokenA_D6.balanceOf(pairAddress), amountToken, "Incorrect tokenA balance in pair");
+        assertEq(WETH.balanceOf(pairAddress), amountETH, "Incorrect WETH balance in pair");
+
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH);
+        assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance of expected value");
+    }
+
+    function test_AddLiquidityETH_D0_Wrapped() public {
+        tokenA_D0.approve(address(masterRouterV2), 100);
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 1 ether
+        }(address(tokenA_D0), 100, 90, 0.9 ether, true, user0, block.timestamp);
+
+        assertEq(amountToken, 100 * 1e18);
+        assertEq(amountETH, 1 ether);
+        assertGt(liquidity, 0);
+
+        address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(WETH));
+        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+    }
+
+    function test_AddLiquidityETH_D6_Unwrapped() public {
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 1 ether
+        }(address(tokenA_D6), 1000000, 900000, 0.9 ether, false, user0, block.timestamp);
+
+        assertEq(amountToken, 1000000);
+        assertEq(amountETH, 1 ether);
+        assertGt(liquidity, 0);
+
+        address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
+        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+    }
+
+    function test_AddLiquidityETH_InsufficientAllowance() public {
+        tokenA_D6.approve(address(masterRouterV2), 500000);
+
+        vm.expectRevert(0x7939f424);
+        masterRouterV2.wrapTokenAndaddLiquidityETH{value: 1 ether}(
+            address(tokenA_D6),
+            1000000,
+            900000,
+            0.9 ether,
+            false,
+            user0,
+            block.timestamp
+        );
+    }
+
+    function test_AddLiquidityETH_D0_DifferentAmounts() public {
+        tokenA_D0.approve(address(masterRouterV2), 1000);
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 2 ether
+        }(address(tokenA_D0), 1000, 900, 1.8 ether, true, user0, block.timestamp);
+
+        assertEq(amountToken, 1000 * 1e18);
+        assertEq(amountETH, 2 ether);
+        assertGt(liquidity, 0);
+
+        address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(WETH));
+        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        assertEq(liquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
+
+        assertEq(IERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0))).balanceOf(pairAddress), 1000 * 1e18);
+        assertEq(WETH.balanceOf(pairAddress), 2 ether);
+    }
+
+    function test_AddLiquidityETH_D6_DifferentAmounts() public {
+        tokenA_D6.approve(address(masterRouterV2), 2000000);
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 1 ether
+        }(address(tokenA_D6), 2000000, 1900000, 0.9 ether, false, user0, block.timestamp);
+
+        assertEq(amountToken, 2000000);
+        assertEq(amountETH, 1 ether);
+        assertGt(liquidity, 0);
+
+        address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
+        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        assertEq(liquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
+
+        assertEq(tokenA_D6.balanceOf(pairAddress), 2000000);
+        assertEq(WETH.balanceOf(pairAddress), 1 ether);
+    }
+
+    function test_MultipleAddLiquidityETH_DifferentAccounts() public {
+        // Setup for user0
+        vm.startPrank(user0);
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+        masterRouterV2.wrapTokenAndaddLiquidityETH{value: 1 ether}(
+            address(tokenA_D6),
+            1000000,
+            900000,
+            0.9 ether,
+            false,
+            user0,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        // Setup for user1
+        vm.startPrank(user1);
+        tokenA_D6.approve(address(masterRouterV2), 500000);
+        masterRouterV2.wrapTokenAndaddLiquidityETH{value: 0.5 ether}(
+            address(tokenA_D6),
+            500000,
+            450000,
+            0.45 ether,
+            false,
+            user1,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
+
+        assertEq(tokenA_D6.balanceOf(pairAddress), 1500000);
+        assertEq(WETH.balanceOf(pairAddress), 1.5 ether);
+
+        assertGt(KayenPair(pairAddress).balanceOf(user0), 0);
+        assertGt(KayenPair(pairAddress).balanceOf(user1), 0);
+        assertGt(KayenPair(pairAddress).balanceOf(user0), KayenPair(pairAddress).balanceOf(user1));
+
+        uint256 expectedLiquidityUser0 = Math.sqrt(1000000 * 1 ether) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidityUser1 = Math.sqrt(500000 * 0.5 ether);
+
+        assertEq(KayenPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
+        assertEq(KayenPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
+
+        uint256 liquidityRatio = (expectedLiquidityUser0 * 1e18) / expectedLiquidityUser1;
+        assertApproxEqRel(liquidityRatio, 2e18, 0.01e18, "Liquidity ratio should be close to 2:1");
+    }
+
+    function test_AddLiquidityETH_AmountETHOptimalIsOk_D0() public {
+        tokenA_D0.approve(address(masterRouterV2), 1000);
+
+        tokenA_D0.approve(address(wrapperFactory), 1000);
+        address wrappedTokenA_D0 = wrapperFactory.wrap(address(this), address(tokenA_D0), 1000);
+        address pairAddress = factory.createPair(wrappedTokenA_D0, address(WETH));
+
+        KayenPair pair = KayenPair(pairAddress);
+
+        // Transfer tokens and mint initial liquidity for testing purposes
+        IERC20(wrappedTokenA_D0).transfer(pairAddress, 1000 * 1e18);
+        WETH.deposit{value: 2 ether}();
+        WETH.transfer(pairAddress, 2 ether);
+        // Mint initial liquidity to user0
+        pair.mint(user0);
+
+        // Check initial liquidity
+        uint256 initialLiquidity = pair.totalSupply();
+        assertGt(initialLiquidity, 0, "Initial liquidity should be greater than 0");
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 2 ether
+        }(address(tokenA_D0), 1000, 900, 1.8 ether, true, address(this), block.timestamp);
+
+        assertEq(amountToken, 1000 * 1e18, "Incorrect wrapped amount for tokenA");
+        assertEq(amountETH, 2 ether, "Incorrect amount for ETH");
+
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH);
+        assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance");
+
+        assertEq(
+            IERC20(wrappedTokenA_D0).balanceOf(pairAddress),
+            2000 * 1e18,
+            "Incorrect wrapped tokenA balance in pair"
+        );
+        assertEq(WETH.balanceOf(pairAddress), 4 ether, "Incorrect WETH balance in pair");
+    }
+
+    function test_AddLiquidityETH_AmountETHOptimalIsOk_D6() public {
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+
+        address pairAddress = factory.createPair(address(tokenA_D6), address(WETH));
+
+        KayenPair pair = KayenPair(pairAddress);
+
+        assertEq(pair.token0(), address(tokenA_D6));
+        assertEq(pair.token1(), address(WETH));
+
+        // Transfer tokens and mint initial liquidity for testing purposes
+        tokenA_D6.transfer(pairAddress, 1000000);
+        WETH.deposit{value: 2 ether}();
+        WETH.transfer(pairAddress, 2 ether);
+
+        // Mint initial liquidity to user0
+        pair.mint(user0);
+
+        // Check initial liquidity
+        uint256 initialLiquidity = pair.totalSupply();
+        assertGt(initialLiquidity, 0, "Initial liquidity should be greater than 0");
+
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 2 ether
+        }(address(tokenA_D6), 1000000, 900000, 1.8 ether, false, address(this), block.timestamp);
+
+        assertEq(amountToken, 1000000, "Incorrect amount for tokenA");
+        assertEq(amountETH, 2 ether, "Incorrect amount for ETH");
+
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH);
+        assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance");
+
+        assertEq(tokenA_D6.balanceOf(pairAddress), 1000000 * 2, "Incorrect tokenA balance in pair");
+        assertEq(WETH.balanceOf(pairAddress), 2 ether * 2, "Incorrect WETH balance in pair");
+    }
 }
 
-// forge test --match-path test/KayenMasterRouterV2.t.sol -vvvv
+// forge test --match-path test/KayenMasterRouterV2/KayenMasterRouterV2_addliquidity.t.sol -vvvv
