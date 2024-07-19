@@ -396,6 +396,175 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         assertEq(finalBalanceA, initialBalanceA - amounts[0], "Incorrect final balance of tokenA_D18");
         assertEq(finalBalanceB, initialBalanceB + amounts[1], "Incorrect final balance of tokenA_D6");
     }
+
+    function test_swapExactETHForTokens_ETH_D0_ReceiveUnwrapped() public {
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+
+        // Add initial liquidity
+        tokenA_D0.approve(address(masterRouterV2), 1000);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 100 ether
+        }(address(tokenA_D0), 1000, 90, 0.9 ether, true, address(this), block.timestamp);
+
+        address pairAddress = factory.getPair(wrappedTokenA, address(WETH));
+        (address token0, address token1) = wrappedTokenA < address(WETH)
+            ? (wrappedTokenA, address(WETH))
+            : (address(WETH), wrappedTokenA);
+        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        uint256 initialBalanceToken = tokenA_D0.balanceOf(user0);
+        uint256 initialBalanceETH = user0.balance;
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = wrappedTokenA;
+
+        uint256 swapAmount = 0.1 ether;
+        vm.startPrank(user0);
+        uint256[] memory amounts = masterRouterV2.swapExactETHForTokens{value: swapAmount}(
+            0,
+            path,
+            true,
+            user0,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        // Assertions
+        assertEq(amounts.length, 2, "Incorrect number of amounts returned");
+        assertEq(amounts[0], swapAmount, "Incorrect input amount");
+        assertGt(amounts[1], 0, "Output amount should be greater than 0");
+
+        if (token0 == address(WETH)) {
+            assertGt(finalReserve0, initialReserve0, "Reserve0 (WETH) should increase");
+            assertLt(finalReserve1, initialReserve1, "Reserve1 (wrapped token) should decrease");
+        } else {
+            assertLt(finalReserve0, initialReserve0, "Reserve0 (wrapped token) should decrease");
+            assertGt(finalReserve1, initialReserve1, "Reserve1 (WETH) should increase");
+        }
+
+        uint256 finalBalanceToken = tokenA_D0.balanceOf(user0);
+        uint256 finalBalanceETH = user0.balance;
+        uint256 finalBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
+        assertEq(finalBalanceToken, initialBalanceToken + amounts[1] / 1e18, "Incorrect final balance of tokenA_D0");
+        assertEq(finalBalanceETH, initialBalanceETH - swapAmount, "Incorrect final balance of ETH");
+        assertEq(finalBalanceWrappedToken, amounts[1] % 1e18, "Incorrect final balance of wrapped token");
+    }
+
+    function test_swapExactETHForTokens_ETH_D0_ReceiveWrapped() public {
+        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+
+        // Add initial liquidity
+        tokenA_D0.approve(address(masterRouterV2), 1000);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 100 ether
+        }(address(tokenA_D0), 1000, 90, 0.9 ether, true, address(this), block.timestamp);
+
+        address pairAddress = factory.getPair(wrappedTokenA, address(WETH));
+        (address token0, address token1) = wrappedTokenA < address(WETH)
+            ? (wrappedTokenA, address(WETH))
+            : (address(WETH), wrappedTokenA);
+        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        uint256 initialBalanceToken = tokenA_D0.balanceOf(user0);
+        uint256 initialBalanceETH = user0.balance;
+        uint256 initialBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = wrappedTokenA;
+
+        uint256 swapAmount = 0.1 ether;
+        vm.startPrank(user0);
+        uint256[] memory amounts = masterRouterV2.swapExactETHForTokens{value: swapAmount}(
+            0,
+            path,
+            false,
+            user0,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        // Assertions
+        assertEq(amounts.length, 2, "Incorrect number of amounts returned");
+        assertEq(amounts[0], swapAmount, "Incorrect input amount");
+        assertGt(amounts[1], 0, "Output amount should be greater than 0");
+
+        if (token0 == address(WETH)) {
+            assertGt(finalReserve0, initialReserve0, "Reserve0 (WETH) should increase");
+            assertLt(finalReserve1, initialReserve1, "Reserve1 (wrapped token) should decrease");
+        } else {
+            assertLt(finalReserve0, initialReserve0, "Reserve0 (wrapped token) should decrease");
+            assertGt(finalReserve1, initialReserve1, "Reserve1 (WETH) should increase");
+        }
+
+        uint256 finalBalanceToken = tokenA_D0.balanceOf(user0);
+        uint256 finalBalanceETH = user0.balance;
+        uint256 finalBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
+        assertEq(finalBalanceToken, initialBalanceToken, "Balance of tokenA_D0 should not change");
+        assertEq(finalBalanceETH, initialBalanceETH - swapAmount, "Incorrect final balance of ETH");
+        assertEq(
+            finalBalanceWrappedToken,
+            initialBalanceWrappedToken + amounts[1],
+            "Incorrect final balance of wrapped token"
+        );
+    }
+
+    function test_swapExactETHForTokens_ETH_D6_ReceiveUnwrapped() public {
+        // Add initial liquidity
+        tokenA_D6.approve(address(masterRouterV2), 1000000);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
+            value: 100 ether
+        }(address(tokenA_D6), 1000000, 900000, 0.9 ether, false, address(this), block.timestamp);
+
+        address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
+        (address token0, address token1) = address(tokenA_D6) < address(WETH)
+            ? (address(tokenA_D6), address(WETH))
+            : (address(WETH), address(tokenA_D6));
+        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        uint256 initialBalanceToken = tokenA_D6.balanceOf(user0);
+        uint256 initialBalanceETH = user0.balance;
+
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = address(tokenA_D6);
+
+        uint256 swapAmount = 0.1 ether;
+        vm.startPrank(user0);
+        uint256[] memory amounts = masterRouterV2.swapExactETHForTokens{value: swapAmount}(
+            0,
+            path,
+            false,
+            user0,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+
+        // Assertions
+        assertEq(amounts.length, 2, "Incorrect number of amounts returned");
+        assertEq(amounts[0], swapAmount, "Incorrect input amount");
+        assertGt(amounts[1], 0, "Output amount should be greater than 0");
+
+        if (token0 == address(WETH)) {
+            assertGt(finalReserve0, initialReserve0, "Reserve0 (WETH) should increase");
+            assertLt(finalReserve1, initialReserve1, "Reserve1 (tokenA_D6) should decrease");
+        } else {
+            assertLt(finalReserve0, initialReserve0, "Reserve0 (tokenA_D6) should decrease");
+            assertGt(finalReserve1, initialReserve1, "Reserve1 (WETH) should increase");
+        }
+
+        uint256 finalBalanceToken = tokenA_D6.balanceOf(user0);
+        uint256 finalBalanceETH = user0.balance;
+        assertEq(finalBalanceToken, initialBalanceToken + amounts[1], "Incorrect final balance of tokenA_D6");
+        assertEq(finalBalanceETH, initialBalanceETH - swapAmount, "Incorrect final balance of ETH");
+    }
 }
 
 // forge test --match-path test/KayenMasterRouterV2/KayenMasterRouterV2_swap.t.sol -vvvv
