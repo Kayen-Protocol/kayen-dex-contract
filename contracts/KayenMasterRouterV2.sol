@@ -272,9 +272,9 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
 
         // if tokenIn is unwrapped
         if (unwrappedTokenIn != address(0)) {
-            uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(unwrappedTokenIn).getDecimalsOffset() + 1;
+            uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(path[0]).getDecimalsOffset() + 1;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
-            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, 0, true);
             require(tokenIn == path[0], "KMR: !wrappedTokenIn");
             require(amountIn > amounts[0], "KMR: amountIn > amounts[0]");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
