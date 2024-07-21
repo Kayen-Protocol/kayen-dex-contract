@@ -218,24 +218,27 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 deadline
     ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
         address tokenIn = path[0];
-        if (!isTokenInWrapped) {
-            address unwrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn);
-            if (unwrappedTokenIn != address(0)) {
-                address adjustedTokenIn;
-                TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
-                (adjustedTokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
-                require(adjustedTokenIn == path[0], "KMR: !wrappedTokenIn");
-            } else {
-                TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
-            }
+        address unwrappedTokenIn = !isTokenInWrapped
+            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            : address(0);
+
+        // if tokenIn is unwrapped
+        if (unwrappedTokenIn != address(0)) {
+            TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
+            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
-            TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+            TransferHelper.safeTransferFrom(
+                tokenIn,
+                msg.sender,
+                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                amountIn
+            );
         }
 
         amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, "KMR: InsufficientOutputAmount");
-
-        TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         _swap(amounts, path, address(this));
 
         address tokenOut = path[path.length - 1];
@@ -261,28 +264,34 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
         amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
-
-        // 아래 로직 틀림.
         address tokenIn = path[0];
         uint256 amountIn = amounts[0];
-        address pairAddress = KayenLibrary.pairFor(factory, path[0], path[1]);
+        address unwrappedTokenIn = !isTokenInWrapped
+            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            : address(0);
 
-        if (!isTokenInWrapped) {
-            address unwrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn);
-            if (unwrappedTokenIn != address(0)) {
-                TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
-                (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
-                require(tokenIn == path[0], "KMR: !wrappedTokenIn");
-                TransferHelper.safeTransfer(tokenIn, pairAddress, amountIn);
-            } else {
-                TransferHelper.safeTransferFrom(tokenIn, msg.sender, pairAddress, amountIn);
-            }
+        // if tokenIn is unwrapped
+        if (unwrappedTokenIn != address(0)) {
+            uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(unwrappedTokenIn).getDecimalsOffset() + 1;
+            TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
+            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            require(amountIn > amounts[0], "KMR: amountIn > amounts[0]");
+            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
-            TransferHelper.safeTransferFrom(tokenIn, msg.sender, pairAddress, amountIn);
+            TransferHelper.safeTransferFrom(
+                tokenIn,
+                msg.sender,
+                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                amountIn
+            );
         }
 
         _swap(amounts, path, receiveUnwrappedToken ? address(this) : to);
 
+        if (amountIn - amounts[0] > 0) {
+            TransferHelper.safeTransfer(tokenIn, to, amountIn - amounts[0]);
+        }
         if (receiveUnwrappedToken) {
             address tokenOut = path[path.length - 1];
             bool isWrapped = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
@@ -321,6 +330,56 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         );
     }
 
+    function swapTokensForExactETH(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isTokenInWrapped,
+        address to,
+        uint256 deadline
+    ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
+        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
+        if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
+        address tokenIn = path[0];
+        uint256 amountIn = amounts[0];
+        address unwrappedTokenIn = !isTokenInWrapped
+            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            : address(0);
+
+        // if tokenIn is unwrapped
+        if (unwrappedTokenIn != address(0)) {
+            uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(unwrappedTokenIn).getDecimalsOffset() + 1;
+            TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
+            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            require(amountIn > amounts[0], "KMR: amountIn > amounts[0]");
+            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
+        } else {
+            TransferHelper.safeTransferFrom(
+                tokenIn,
+                msg.sender,
+                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                amountIn
+            );
+        }
+
+        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
+        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
+        if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
+        TransferHelper.safeTransferFrom(
+            path[0],
+            msg.sender,
+            KayenLibrary.pairFor(factory, path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, address(this));
+        if (amountIn - amounts[0] > 0) {
+            TransferHelper.safeTransfer(tokenIn, to, amountIn - amounts[0]);
+        }
+        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
+        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
+    }
+
     function swapExactTokensForETH(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -330,23 +389,29 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 deadline
     ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
         address tokenIn = path[0];
-        if (!isTokenInWrapped) {
-            address unwrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn);
-            if (unwrappedTokenIn != address(0)) {
-                TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
-                (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
-                require(tokenIn == path[0], "KMR: !wrappedTokenIn");
-            } else {
-                TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
-            }
+        address unwrappedTokenIn = !isTokenInWrapped
+            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            : address(0);
+
+        // if tokenIn is unwrapped
+        if (unwrappedTokenIn != address(0)) {
+            TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
+            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
-            TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+            TransferHelper.safeTransferFrom(
+                tokenIn,
+                msg.sender,
+                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                amountIn
+            );
         }
 
         if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
         amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
         if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
-        TransferHelper.safeTransfer(path[0], KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]);
+        // TransferHelper.safeTransfer(path[0], KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]);
 
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -380,114 +445,6 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             isWrapped ? IChilizWrappedERC20(tokenOut).getDecimalsOffset() : 0
         );
     }
-
-    // function swapExactTokensForTokens( DONE
-    //     uint256 amountIn,
-    //     uint256 amountOutMin,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
-    //     amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
-    //     if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
-    //     TransferHelper.safeTransferFrom(
-    //         path[0],
-    //         msg.sender,
-    //         KayenLibrary.pairFor(factory, path[0], path[1]),
-    //         amounts[0]
-    //     );
-    //     _swap(amounts, path, to);
-    // }
-
-    // function swapTokensForExactTokens( DONE
-    //     uint256 amountOut,
-    //     uint256 amountInMax,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-    //     amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
-    //     if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
-    //     TransferHelper.safeTransferFrom(
-    //         path[0],
-    //         msg.sender,
-    //         KayenLibrary.pairFor(factory, path[0], path[1]),
-    //         amounts[0]
-    //     );
-    //     _swap(amounts, path, to);
-    // }
-
-    // function swapExactETHForTokens( DONE
-    //     uint256 amountOutMin,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-    //     if (path[0] != WETH) revert KayenLibrary.InvalidPath();
-    //     amounts = KayenLibrary.getAmountsOut(factory, msg.value, path);
-    //     if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
-    //     IWETH(WETH).deposit{value: amounts[0]}();
-    //     assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-    //     _swap(amounts, path, to);
-    // }
-
-    // function swapTokensForExactETH(
-    //     uint256 amountOut,
-    //     uint256 amountInMax,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-    //     if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
-    //     amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
-    //     if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
-    //     TransferHelper.safeTransferFrom(
-    //         path[0],
-    //         msg.sender,
-    //         KayenLibrary.pairFor(factory, path[0], path[1]),
-    //         amounts[0]
-    //     );
-    //     _swap(amounts, path, address(this));
-    //     IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-    //     TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
-    // }
-
-    // function swapExactTokensForETH( DONE
-    //     uint256 amountIn,
-    //     uint256 amountOutMin,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-    //     if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
-    //     amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
-    //     if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
-    //     TransferHelper.safeTransferFrom(
-    //         path[0],
-    //         msg.sender,
-    //         KayenLibrary.pairFor(factory, path[0], path[1]),
-    //         amounts[0]
-    //     );
-    //     _swap(amounts, path, address(this));
-    //     IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-    //     TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
-    // }
-
-    // function swapETHForExactTokens( DONE
-    //     uint256 amountOut,
-    //     address[] calldata path,
-    //     address to,
-    //     uint256 deadline
-    // ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-    //     if (path[0] != WETH) revert KayenLibrary.InvalidPath();
-    //     amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
-    //     if (amounts[0] > msg.value) revert ExcessiveInputAmount();
-    //     IWETH(WETH).deposit{value: amounts[0]}();
-    //     assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-    //     _swap(amounts, path, to);
-    //     // refund dust eth, if any
-    //     if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
-    // }
 
     function _returnUnwrappedTokenAndDust(address token, address to, bool wrapToken, uint256 decimalsOffset) private {
         if (wrapToken) {
