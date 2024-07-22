@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IKayenRouter02.sol";
 import "./interfaces/IKayenMasterRouterV2.sol";
 import "./interfaces/IChilizWrapperFactory.sol";
 import "./interfaces/IChilizWrappedERC20.sol";
@@ -10,32 +9,66 @@ import "./interfaces/IWETH.sol";
 import "./libraries/KayenLibrary.sol";
 import "./libraries/TransferHelper.sol";
 
+/// @title KayenMasterRouterV2
+/// @notice This contract provides advanced routing capabilities for the Kayen decentralized exchange
+/// @dev Implements the IKayenMasterRouterV2 interface
+/// @dev Handles token wrapping, liquidity provision, and swaps with support for both wrapped and unwrapped tokens
 contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
+    /// @notice Address of the Kayen factory contract
+    /// @dev This is immutable and set in the constructor
     address public immutable factory;
+
+    /// @notice Address of the Wrapped Ether (WETH) contract
+    /// @dev This is immutable and set in the constructor
     address public immutable WETH;
-    address public immutable router;
+
+    /// @notice Address of the Chiliz wrapper factory contract
+    /// @dev This is immutable and set in the constructor
     address public immutable wrapperFactory;
 
-    constructor(address _factory, address _wrapperFactory, address _router, address _WETH) {
-        require(
-            _factory != address(0) && _wrapperFactory != address(0) && _router != address(0) && _WETH != address(0),
-            "KMR: ZERO_ADDRESS"
-        );
+    /// @notice Initializes the contract with factory, wrapper factory, and WETH addresses
+    /// @dev Sets the immutable state variables
+    /// @param _factory Address of the Kayen factory contract
+    /// @param _wrapperFactory Address of the Chiliz wrapper factory contract
+    /// @param _WETH Address of the Wrapped Ether (WETH) contract
+    /// @custom:security Non-zero address check is performed to prevent accidental zero address initialization
+    constructor(address _factory, address _wrapperFactory, address _WETH) {
+        require(_factory != address(0) && _wrapperFactory != address(0) && _WETH != address(0), "MV2: ZERO_ADDRESS");
         factory = _factory;
         wrapperFactory = _wrapperFactory;
-        router = _router;
         WETH = _WETH;
     }
 
+    /// @notice Ensures that the transaction is executed before the deadline
+    /// @dev This modifier is used to prevent pending transactions from being executed after a certain time
+    /// @param deadline The Unix timestamp after which the transaction will revert
+    /// @custom:error Expired If the current block timestamp is greater than or equal to the deadline
     modifier ensure(uint256 deadline) {
         if (deadline < block.timestamp) revert Expired();
         _;
     }
 
+    /// @notice Allows the contract to receive ETH
+    /// @dev This function is called when ETH is sent to the contract
+    /// @custom:security Only allows ETH to be received from the WETH contract
     receive() external payable {
-        require(msg.sender == WETH || msg.sender == router, "MR: !Wrong Sender");
+        require(msg.sender == WETH, "MV2: ETH_UNACCEPTABLE");
     }
 
+    /// @notice Wraps tokens if necessary and adds liquidity to a Kayen pool
+    /// @param tokenA Address of the first token in the pair
+    /// @param tokenB Address of the second token in the pair
+    /// @param amountADesired The amount of tokenA to add as liquidity if the B/A price is <= amountBDesired/amountADesired (A depreciates)
+    /// @param amountBDesired The amount of tokenB to add as liquidity if the A/B price is <= amountADesired/amountBDesired (B depreciates)
+    /// @param amountAMin Minimum amount of tokenA to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
+    /// @param amountBMin Minimum amount of tokenB to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
+    /// @param wrapTokenA Boolean indicating whether tokenA should be wrapped
+    /// @param wrapTokenB Boolean indicating whether tokenB should be wrapped
+    /// @param to Recipient of the liquidity tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amountA The amount of tokenA sent to the pool
+    /// @return amountB The amount of tokenB sent to the pool
+    /// @return liquidity The amount of liquidity tokens minted
     function wrapTokensAndaddLiquidity(
         address tokenA,
         address tokenB,
@@ -47,7 +80,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool wrapTokenB,
         address to,
         uint256 deadline
-    ) public virtual ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+    ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         _validateTokens(tokenA, tokenB, wrapTokenA, wrapTokenB);
 
         TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountADesired);
@@ -66,6 +99,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             uint256 decimalsOffsetB
         ) = _adjustToken(tokenB, amountBDesired, amountBMin, wrapTokenB);
 
+        // Note: adjustedAmountAMin and adjustedAmountBMin are used here, which account for wrapped/unwrapped state
         (amountA, amountB) = _addLiquidity(
             adjustedTokenA,
             adjustedTokenB,
@@ -84,6 +118,17 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         _returnUnwrappedTokenAndDust(adjustedTokenB, msg.sender, wrapTokenB, decimalsOffsetB);
     }
 
+    /// @notice Wraps tokens if necessary and adds liquidity to a Kayen pool with ETH
+    /// @param token Address of the token to be paired with ETH
+    /// @param amountTokenDesired The amount of token to add as liquidity if the ETH/token price is <= msg.value/amountTokenDesired (token depreciates)
+    /// @param amountTokenMin Minimum amount of token to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
+    /// @param amountETHMin Minimum amount of ETH to add as liquidity
+    /// @param wrapToken Boolean indicating whether the token should be wrapped
+    /// @param to Recipient of the liquidity tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amountToken The amount of token sent to the pool
+    /// @return amountETH The amount of ETH sent to the pool
+    /// @return liquidity The amount of liquidity tokens minted
     function wrapTokenAndaddLiquidityETH(
         address token,
         uint256 amountTokenDesired,
@@ -92,7 +137,14 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool wrapToken,
         address to,
         uint256 deadline
-    ) external payable virtual ensure(deadline) returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
+    )
+        external
+        payable
+        virtual
+        override
+        ensure(deadline)
+        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity)
+    {
         _validateTokens(token, WETH, wrapToken, false);
 
         TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
@@ -123,6 +175,18 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         _returnUnwrappedTokenAndDust(adjustedToken, msg.sender, wrapToken, decimalsOffset);
     }
 
+    /// @notice Removes liquidity from a Kayen pool and unwraps tokens if necessary
+    /// @param tokenA Address of the first token in the pair
+    /// @param tokenB Address of the second token in the pair
+    /// @param liquidity Amount of liquidity tokens to remove
+    /// @param amountAMin Minimum amount of tokenA to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
+    /// @param amountBMin Minimum amount of tokenB to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
+    /// @param isTokenAWrapped Boolean indicating whether tokenA is wrapped
+    /// @param isTokenBWrapped Boolean indicating whether tokenB is wrapped
+    /// @param to Recipient of the underlying tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amountA The amount of tokenA received
+    /// @return amountB The amount of tokenB received
     function removeLiquidityAndUnwrapToken(
         address tokenA,
         address tokenB,
@@ -133,7 +197,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool isTokenBWrapped,
         address to,
         uint256 deadline
-    ) public virtual ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+    ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
         address adjustedTokenA = isTokenAWrapped
             ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenA)
             : tokenA;
@@ -141,22 +205,36 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenB)
             : tokenB;
 
+        uint256 decimalsOffsetA = isTokenAWrapped ? IChilizWrappedERC20(adjustedTokenA).getDecimalsOffset() : 0;
+        uint256 decimalsOffsetB = isTokenBWrapped ? IChilizWrappedERC20(adjustedTokenB).getDecimalsOffset() : 0;
+
+        uint256 adjustedAmountAMin = isTokenAWrapped ? amountAMin * (10 ** decimalsOffsetA) : amountAMin;
+        uint256 adjustedAmountBMin = isTokenBWrapped ? amountBMin * (10 ** decimalsOffsetB) : amountBMin;
+
         (uint256 amount0, uint256 amount1) = _removeLiquidity(
             adjustedTokenA,
             adjustedTokenB,
             liquidity,
-            amountAMin,
-            amountBMin
+            adjustedAmountAMin,
+            adjustedAmountBMin
         );
 
-        uint256 decimalsOffsetA = isTokenAWrapped ? IChilizWrappedERC20(adjustedTokenA).getDecimalsOffset() : 0;
-        uint256 decimalsOffsetB = isTokenBWrapped ? IChilizWrappedERC20(adjustedTokenB).getDecimalsOffset() : 0;
         _returnUnwrappedTokenAndDust(adjustedTokenA, to, isTokenAWrapped, decimalsOffsetA);
         _returnUnwrappedTokenAndDust(adjustedTokenB, to, isTokenBWrapped, decimalsOffsetB);
 
         return (amount0, amount1);
     }
 
+    /// @notice Removes liquidity from a Kayen pool with ETH and unwraps tokens if necessary
+    /// @param token Address of the token in the pair with ETH
+    /// @param liquidity Amount of liquidity tokens to remove
+    /// @param amountTokenMin Minimum amount of token to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
+    /// @param amountETHMin Minimum amount of ETH to receive
+    /// @param isTokenWrapped Boolean indicating whether the token is wrapped
+    /// @param to Recipient of the underlying tokens and ETH
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amountToken The amount of token received
+    /// @return amountETH The amount of ETH received
     function removeLiquidityETHAndUnwrap(
         address token,
         uint256 liquidity,
@@ -165,14 +243,22 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool isTokenWrapped,
         address to,
         uint256 deadline
-    ) public virtual ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
+    ) public virtual override ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
         address adjustedToken = isTokenWrapped
             ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(token)
             : token;
 
-        (amountToken, amountETH) = _removeLiquidity(adjustedToken, WETH, liquidity, amountTokenMin, amountETHMin);
-
         uint256 decimalsOffset = isTokenWrapped ? IChilizWrappedERC20(adjustedToken).getDecimalsOffset() : 0;
+        uint256 adjustedAmountTokenMin = isTokenWrapped ? amountTokenMin * (10 ** decimalsOffset) : amountTokenMin;
+
+        (amountToken, amountETH) = _removeLiquidity(
+            adjustedToken,
+            WETH,
+            liquidity,
+            adjustedAmountTokenMin,
+            amountETHMin
+        );
+
         _returnUnwrappedTokenAndDust(adjustedToken, to, isTokenWrapped, decimalsOffset);
         IWETH(WETH).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
@@ -191,6 +277,17 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         }
     }
 
+    /// @notice Swaps an exact amount of input tokens for as many output tokens as possible
+    /// @dev The first element of path is the input token, the last is the output token, and any intermediate elements represent intermediate pairs to trade through
+    /// @dev msg.sender should have already given the router an allowance of at least amountIn on the input token
+    /// @param amountIn The amount of input tokens to send. For unwrapped tokens, this should be the raw token amount. For wrapped tokens, this should be the wrapped token amount.
+    /// @param amountOutMin The minimum amount of output tokens that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param isTokenInWrapped Boolean indicating whether the input token is wrapped
+    /// @param receiveUnwrappedToken Boolean indicating whether to receive unwrapped tokens
+    /// @param to Recipient of the output tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -199,7 +296,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool receiveUnwrappedToken,
         address to,
         uint256 deadline
-    ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
+    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
         address tokenIn = path[0];
         address unwrappedTokenIn = !isTokenInWrapped
             ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
@@ -208,7 +305,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         if (unwrappedTokenIn != address(0)) {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
             (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
-            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            require(tokenIn == path[0], "MV2: WRONG_PATH");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
             TransferHelper.safeTransferFrom(
@@ -220,7 +317,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         }
 
         amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, "KMR: InsufficientOutputAmount");
+        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         _swap(amounts, path, address(this));
 
         address tokenOut = path[path.length - 1];
@@ -235,6 +332,16 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         );
     }
 
+    /// @notice Swaps an exact amount of output tokens for as few input tokens as possible, along the route determined by the path
+    /// @dev The first element of path is the input token, the last is the output token, and any intermediate elements represent intermediate tokens to trade through
+    /// @param amountOut The amount of output tokens to receive. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param amountInMax The maximum amount of input tokens that can be required before the transaction reverts. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param isTokenInWrapped Boolean indicating whether the input token is wrapped
+    /// @param receiveUnwrappedToken Boolean indicating whether to receive unwrapped tokens
+    /// @param to Recipient of the output tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapTokensForExactTokens(
         uint256 amountOut,
         uint256 amountInMax,
@@ -243,7 +350,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool receiveUnwrappedToken,
         address to,
         uint256 deadline
-    ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
+    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
         amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         address tokenIn = path[0];
@@ -256,7 +363,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(path[0]).getDecimalsOffset() + 1;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
             (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, 0, true);
-            require(tokenIn == path[0] && amountIn > amounts[0], "KMR: Invalid amounts");
+            require(tokenIn == path[0] && amountIn > amounts[0], "MV2: INVALID_AMOUNTIN");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
             TransferHelper.safeTransferFrom(
@@ -290,7 +397,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool receiveUnwrappedToken,
         address to,
         uint256 deadline
-    ) external payable virtual ensure(deadline) returns (uint256[] memory amounts) {
+    ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
         if (path[0] != WETH) revert KayenLibrary.InvalidPath();
         amounts = KayenLibrary.getAmountsOut(factory, msg.value, path);
         if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
@@ -310,6 +417,16 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         );
     }
 
+    /// @notice Swaps tokens for an exact amount of ETH
+    /// @dev The first element of path is the input token, the last is WETH, and any intermediate elements represent intermediate pairs to trade through
+    /// @dev msg.sender should have already given the router an allowance of at least amountInMax on the input token
+    /// @param amountOut The exact amount of ETH to receive
+    /// @param amountInMax The maximum amount of input tokens that can be required before the transaction reverts. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param isTokenInWrapped Boolean indicating whether the input token is wrapped
+    /// @param to Recipient of the output ETH
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapTokensForExactETH(
         uint256 amountOut,
         uint256 amountInMax,
@@ -317,7 +434,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         bool isTokenInWrapped,
         address to,
         uint256 deadline
-    ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
+    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
         if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
         amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
@@ -332,8 +449,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             uint256 unwrappedAmountIn = (amountIn + decimalsOffset - 1) / decimalsOffset;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
             (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, 0, true);
-            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
-            require(amountIn >= amounts[0], "KMR: amountIn < amounts[0]");
+            require(tokenIn == path[0], "MV2: WRONG_PATH");
+            require(amountIn >= amounts[0], "MV2: INVALID_AMOUNTIN");
 
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
@@ -353,6 +470,15 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
+    /// @notice Swaps an exact amount of input tokens for ETH
+    /// @dev The first element of path is the input token, the last is WETH, and any intermediate elements represent intermediate pairs to trade through
+    /// @param amountIn The amount of input tokens to swap.
+    /// @param amountOutMin The minimum amount of output tokens that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param isTokenInWrapped Boolean indicating whether the input token is wrapped
+    /// @param to Recipient of the output ETH
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapExactTokensForETH(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -370,7 +496,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         if (unwrappedTokenIn != address(0)) {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
             (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
-            require(tokenIn == path[0], "KMR: !wrappedTokenIn");
+            require(tokenIn == path[0], "MV2: WRONG_PATH");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
             TransferHelper.safeTransferFrom(
@@ -391,13 +517,21 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
+    /// @notice Swaps ETH for an exact amount of output tokens
+    /// @dev The first element of path is WETH, the last is the output token, and any intermediate elements represent intermediate pairs to trade through
+    /// @param amountOut The exact amount of output tokens to receive. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param receiveUnwrappedToken Boolean indicating whether to receive unwrapped tokens
+    /// @param to Recipient of the output tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapETHForExactTokens(
         uint256 amountOut,
         address[] calldata path,
         bool receiveUnwrappedToken,
         address to,
         uint256 deadline
-    ) external payable virtual ensure(deadline) returns (uint256[] memory amounts) {
+    ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
         if (path[0] != WETH) revert KayenLibrary.InvalidPath();
         amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > msg.value) revert ExcessiveInputAmount();
