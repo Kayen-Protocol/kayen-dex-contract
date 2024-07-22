@@ -175,91 +175,71 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         _returnUnwrappedTokenAndDust(adjustedToken, msg.sender, wrapToken, decimalsOffset);
     }
 
-    /// @notice Removes liquidity from a Kayen pool and unwraps tokens if necessary
-    /// @param tokenA Address of the first token in the pair
-    /// @param tokenB Address of the second token in the pair
-    /// @param liquidity Amount of liquidity tokens to remove
-    /// @param amountAMin Minimum amount of tokenA to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
-    /// @param amountBMin Minimum amount of tokenB to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
-    /// @param isTokenAWrapped Boolean indicating whether tokenA is wrapped
-    /// @param isTokenBWrapped Boolean indicating whether tokenB is wrapped
-    /// @param to Recipient of the underlying tokens
+    /// @notice Removes liquidity from a pair and optionally unwraps tokens
+    /// @dev This function removes liquidity from a pair and can unwrap tokens if they are wrapped
+    /// @param tokenA The address of the first token in the pair (must be wrapped or regular token, not unwrapped)
+    /// @param tokenB The address of the second token in the pair (must be wrapped or regular token, not unwrapped)
+    /// @param liquidity The amount of liquidity tokens to burn
+    /// @param amountAMin The minimum amount of tokenA that must be received for the transaction not to revert
+    /// @param amountBMin The minimum amount of tokenB that must be received for the transaction not to revert
+    /// @param receiveUnwrappedTokenA If true, tokenA will be unwrapped before being sent to the recipient
+    /// @param receiveUnwrappedTokenB If true, tokenB will be unwrapped before being sent to the recipient
+    /// @param to The address that will receive the tokens
     /// @param deadline Unix timestamp after which the transaction will revert
-    /// @return amountA The amount of tokenA received
-    /// @return amountB The amount of tokenB received
+    /// @return amountA The amount of tokenA received (in wrapped token amount, regardless of receiveUnwrappedTokenA)
+    /// @return amountB The amount of tokenB received (in wrapped token amount, regardless of receiveUnwrappedTokenB)
     function removeLiquidityAndUnwrapToken(
         address tokenA,
         address tokenB,
         uint256 liquidity,
         uint256 amountAMin,
         uint256 amountBMin,
-        bool isTokenAWrapped,
-        bool isTokenBWrapped,
+        bool receiveUnwrappedTokenA,
+        bool receiveUnwrappedTokenB,
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        address adjustedTokenA = isTokenAWrapped
-            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenA)
-            : tokenA;
-        address adjustedTokenB = isTokenBWrapped
-            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(tokenB)
-            : tokenB;
+        // must put wrapped address for tokenA and tokenB. Wrapped token or just regular token address.
 
-        uint256 decimalsOffsetA = isTokenAWrapped ? IChilizWrappedERC20(adjustedTokenA).getDecimalsOffset() : 0;
-        uint256 decimalsOffsetB = isTokenBWrapped ? IChilizWrappedERC20(adjustedTokenB).getDecimalsOffset() : 0;
+        address underlyingA = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA);
+        address underlyingB = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB);
+        uint256 decimalsOffsetA = underlyingA == address(0) ? IChilizWrappedERC20(tokenA).getDecimalsOffset() : 0;
+        uint256 decimalsOffsetB = underlyingB == address(0) ? IChilizWrappedERC20(tokenB).getDecimalsOffset() : 0;
 
-        uint256 adjustedAmountAMin = isTokenAWrapped ? amountAMin * (10 ** decimalsOffsetA) : amountAMin;
-        uint256 adjustedAmountBMin = isTokenBWrapped ? amountBMin * (10 ** decimalsOffsetB) : amountBMin;
+        (uint256 amount0, uint256 amount1) = _removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin);
 
-        (uint256 amount0, uint256 amount1) = _removeLiquidity(
-            adjustedTokenA,
-            adjustedTokenB,
-            liquidity,
-            adjustedAmountAMin,
-            adjustedAmountBMin
-        );
-
-        _returnUnwrappedTokenAndDust(adjustedTokenA, to, isTokenAWrapped, decimalsOffsetA);
-        _returnUnwrappedTokenAndDust(adjustedTokenB, to, isTokenBWrapped, decimalsOffsetB);
+        _returnUnwrappedTokenAndDust(tokenA, to, receiveUnwrappedTokenA, decimalsOffsetA);
+        _returnUnwrappedTokenAndDust(tokenB, to, receiveUnwrappedTokenB, decimalsOffsetB);
 
         return (amount0, amount1);
     }
 
-    /// @notice Removes liquidity from a Kayen pool with ETH and unwraps tokens if necessary
-    /// @param token Address of the token in the pair with ETH
-    /// @param liquidity Amount of liquidity tokens to remove
-    /// @param amountTokenMin Minimum amount of token to receive. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this is the wrapped token amount.
-    /// @param amountETHMin Minimum amount of ETH to receive
-    /// @param isTokenWrapped Boolean indicating whether the token is wrapped
-    /// @param to Recipient of the underlying tokens and ETH
+    /// @notice Removes liquidity from an ETH pair and optionally unwraps the token
+    /// @dev This function removes liquidity from an ETH pair and can unwrap the token if it is wrapped
+    /// @param token The address of the token in the pair with ETH (must be wrapped or regular token, not unwrapped)
+    /// @param liquidity The amount of liquidity tokens to burn
+    /// @param amountTokenMin The minimum amount of token that must be received for the transaction not to revert
+    /// @param amountETHMin The minimum amount of ETH that must be received for the transaction not to revert
+    /// @param receiveUnwrappedToken If true, the token will be unwrapped before being sent to the recipient
+    /// @param to The address that will receive the token and ETH
     /// @param deadline Unix timestamp after which the transaction will revert
-    /// @return amountToken The amount of token received
+    /// @return amountToken The amount of token received (in wrapped token amount, regardless of receiveUnwrappedToken)
     /// @return amountETH The amount of ETH received
     function removeLiquidityETHAndUnwrap(
         address token,
         uint256 liquidity,
         uint256 amountTokenMin,
         uint256 amountETHMin,
-        bool isTokenWrapped,
+        bool receiveUnwrappedToken,
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        address adjustedToken = isTokenWrapped
-            ? IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(token)
-            : token;
+        address underlying = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(token);
+        uint256 decimalsOffset = underlying == address(0) ? IChilizWrappedERC20(token).getDecimalsOffset() : 0;
 
-        uint256 decimalsOffset = isTokenWrapped ? IChilizWrappedERC20(adjustedToken).getDecimalsOffset() : 0;
-        uint256 adjustedAmountTokenMin = isTokenWrapped ? amountTokenMin * (10 ** decimalsOffset) : amountTokenMin;
+        (amountToken, amountETH) = _removeLiquidity(token, WETH, liquidity, amountTokenMin, amountETHMin);
 
-        (amountToken, amountETH) = _removeLiquidity(
-            adjustedToken,
-            WETH,
-            liquidity,
-            adjustedAmountTokenMin,
-            amountETHMin
-        );
-
-        _returnUnwrappedTokenAndDust(adjustedToken, to, isTokenWrapped, decimalsOffset);
+        _returnUnwrappedTokenAndDust(token, to, receiveUnwrappedToken, decimalsOffset);
         IWETH(WETH).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
     }
@@ -391,6 +371,14 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         }
     }
 
+    /// @notice Swaps an exact amount of ETH for as many output tokens as possible
+    /// @dev The first element of path must be WETH
+    /// @param amountOutMin The minimum amount of output tokens that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param path An array of token addresses. path.length must be >= 2. Pools for each consecutive pair of addresses must exist and have liquidity
+    /// @param receiveUnwrappedToken If true, the output tokens will be unwrapped before being sent to the recipient
+    /// @param to Recipient of the output tokens
+    /// @param deadline Unix timestamp after which the transaction will revert
+    /// @return amounts The input token amount and all subsequent output token amounts
     function swapExactETHForTokens(
         uint256 amountOutMin,
         address[] calldata path,
