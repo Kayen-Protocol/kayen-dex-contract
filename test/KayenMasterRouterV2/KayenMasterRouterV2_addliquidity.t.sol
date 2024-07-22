@@ -44,12 +44,7 @@ contract KayenMasterRouter_Test is Test {
         factory = new KayenFactory(feeSetter);
         router = new KayenRouter02(address(factory), address(WETH));
         wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(
-            address(factory),
-            address(wrapperFactory),
-            address(router),
-            address(WETH)
-        );
+        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);

@@ -43,12 +43,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         factory = new KayenFactory(feeSetter);
         router = new KayenRouter02(address(factory), address(WETH));
         wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(
-            address(factory),
-            address(wrapperFactory),
-            address(router),
-            address(WETH)
-        );
+        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);
@@ -865,7 +860,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         path[1] = address(WETH);
 
         uint256 ethOutAmount = 0.5 ether;
-        uint256 maxTokensIn = 60000*1e18;
+        uint256 maxTokensIn = 60000 * 1e18;
 
         uint256 initialTokenBalance = tokenA_D0.balanceOf(user0);
         uint256 initialEthBalance = user0.balance;
