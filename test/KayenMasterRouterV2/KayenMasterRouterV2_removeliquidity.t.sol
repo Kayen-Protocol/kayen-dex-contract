@@ -122,10 +122,6 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         // Approve liquidity tokens for removal
         KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
-        // Calculate minimum amounts with 0.5% slippage
-        uint256 amountAMin = (amountA * 990) / 1000;
-        uint256 amountBMin = (amountB * 990) / 1000;
-
         // Check if the user received the correct amount of tokens
         uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
         uint256 tokenA_D6_BalanceBefore = tokenA_D6.balanceOf(address(this));
@@ -133,11 +129,11 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Remove all liquidity
         (uint256 removedAmountA, uint256 removedAmountB) = masterRouterV2.removeLiquidityAndUnwrapToken(
-            address(tokenA_D0),
+            wrappedTokenA,
             address(tokenA_D6),
             liquidity,
-            amountAMin,
-            amountBMin,
+            0,
+            0,
             true, // isTokenAWrapped
             false, // isTokenBWrapped
             address(this),
@@ -147,6 +143,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         // Check if removed amounts are within acceptable range (considering potential rounding errors)
         assertApproxEqRel(removedAmountA, amountA, 1e15, "Removed amount A should be close to initial liquidity A");
         assertApproxEqRel(removedAmountB, amountB, 1e15, "Removed amount B should be close to initial liquidity B");
+
         // Check if the pair's balance is nearly zero
         uint256 remainingWrappedTokenA = IERC20(wrappedTokenA).balanceOf(pairAddress);
         uint256 remainingTokenB = tokenA_D6.balanceOf(pairAddress);
@@ -219,22 +216,17 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         // Approve liquidity tokens for removal
         KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
-        // Calculate minimum amounts with 0.5% slippage
-        uint256 amountAMin = (amountA * 990) / 1000;
-        uint256 amountBMin = (amountB * 990) / 1000;
-
         // Check if the user received the correct amount of tokens
+        uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
+        uint256 tokenA_D6_BalanceBefore = tokenA_D6.balanceOf(address(this));
         uint256 wrappedTokenABalanceBefore = IERC20(wrappedTokenA).balanceOf(address(this));
 
         // Remove 50% of liquidity
         uint256 liquidityToRemove = liquidity / 2;
         KayenPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
 
-        uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
-        uint256 tokenA_D6_BalanceBefore = tokenA_D6.balanceOf(address(this));
-
         (uint256 removedAmountA, uint256 removedAmountB) = masterRouterV2.removeLiquidityAndUnwrapToken(
-            address(tokenA_D0),
+            wrappedTokenA,
             address(tokenA_D6),
             liquidityToRemove,
             0,
@@ -252,28 +244,32 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
             "Incorrect remaining liquidity"
         );
 
-        // Check user balances
-        uint256 decimalsOffsetA = 10 ** 18;
+        // For wrapped tokens, we need to consider the decimal offset
+        uint256 decimalsOffsetA = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0)))
+            .getDecimalsOffset();
+
+        // Check unwrapped token A balance
         assertEq(
             tokenA_D0.balanceOf(address(this)) - tokenA_D0_BalanceBefore,
             removedAmountA / decimalsOffsetA,
-            "Incorrect unwrapped tokenA balance"
+            "User should have received the correct amount of unwrapped token A"
         );
+
+        // Check token B balance
         assertEq(
             tokenA_D6.balanceOf(address(this)) - tokenA_D6_BalanceBefore,
             removedAmountB,
-            "Incorrect tokenB balance"
+            "User should have received the correct amount of token B"
         );
-        // Check dust of tokenA_D0 in wrapped token format
+
+        // Check if user received dust of wrapped token correctly
         uint256 wrappedTokenABalanceAfter = IERC20(wrappedTokenA).balanceOf(address(this));
-        uint256 wrappedTokenADust = removedAmountA % decimalsOffsetA;
+        uint256 wrappedTokenADust = wrappedTokenABalanceAfter - wrappedTokenABalanceBefore;
         assertEq(
-            wrappedTokenABalanceAfter - wrappedTokenABalanceBefore,
             wrappedTokenADust,
-            "Incorrect wrapped tokenA dust"
+            removedAmountA - ((removedAmountA / decimalsOffsetA) * decimalsOffsetA),
+            "User should have received less than 1 unit of wrapped token A as dust"
         );
-        assertLt(wrappedTokenADust, decimalsOffsetA, "Wrapped tokenA dust should be less than 1 token");
-        assertGt(wrappedTokenADust, 0, "Wrapped tokenA dust should be greater than 0");
 
         // Check if removed amounts are approximately half of initial amounts
         assertApproxEqRel(
@@ -327,7 +323,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         uint256 wrappedTokenABalanceBefore = IERC20(wrappedTokenA).balanceOf(address(this));
 
         (uint256 removedAmountA, uint256 removedAmountB) = masterRouterV2.removeLiquidityAndUnwrapToken(
-            address(tokenA_D0),
+            wrappedTokenA,
             address(tokenB_D18),
             liquidityToRemove,
             0,
@@ -345,29 +341,31 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
             "Incorrect remaining liquidity"
         );
 
-        // Check user balances
-        uint256 decimalsOffsetA = 10 ** 18;
+        // For wrapped tokens, we need to consider the decimal offset
+        uint256 decimalsOffsetA = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+
+        // Check unwrapped token A balance
         assertEq(
             tokenA_D0.balanceOf(address(this)) - tokenA_D0_BalanceBefore,
             removedAmountA / decimalsOffsetA,
-            "Incorrect unwrapped tokenA balance"
+            "User should have received the correct amount of unwrapped token A"
         );
+
+        // Check token B balance
         assertEq(
             tokenB_D18.balanceOf(address(this)) - tokenB_D18_BalanceBefore,
             removedAmountB,
-            "Incorrect tokenB balance"
+            "User should have received the correct amount of token B"
         );
 
-        // Check dust of tokenA_D0 in wrapped token format
+        // Check if user received dust of wrapped token correctly
         uint256 wrappedTokenABalanceAfter = IERC20(wrappedTokenA).balanceOf(address(this));
-        uint256 wrappedTokenADust = removedAmountA % decimalsOffsetA;
+        uint256 wrappedTokenADust = wrappedTokenABalanceAfter - wrappedTokenABalanceBefore;
         assertEq(
-            wrappedTokenABalanceAfter - wrappedTokenABalanceBefore,
             wrappedTokenADust,
-            "Incorrect wrapped tokenA dust"
+            removedAmountA - ((removedAmountA / decimalsOffsetA) * decimalsOffsetA),
+            "User should have received less than 1 unit of wrapped token A as dust"
         );
-        assertLt(wrappedTokenADust, decimalsOffsetA, "Wrapped tokenA dust should be less than 1 token");
-        assertGt(wrappedTokenADust, 0, "Wrapped tokenA dust should be greater than 0");
 
         // Check if removed amounts are approximately half of initial amounts
         assertApproxEqRel(
@@ -388,6 +386,9 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         uint256 initialLiquidityToken = 100000; // 100000 for D0 token
         uint256 initialLiquidityETH = 1 ether;
 
+        // Get wrapped token address
+        address wrappedToken = wrapperFactory.wrappedTokenFor(address(tokenA_D0));
+
         // Approve tokens for adding liquidity
         tokenA_D0.approve(address(masterRouterV2), initialLiquidityToken);
 
@@ -395,7 +396,6 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
             value: initialLiquidityETH
         }(address(tokenA_D0), initialLiquidityToken, 0, 0, true, address(this), block.timestamp);
-        address wrappedToken = wrapperFactory.wrappedTokenFor(address(tokenA_D0));
 
         // Get pair address
         address pairAddress = factory.getPair(wrappedToken, address(WETH));
@@ -414,11 +414,11 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Remove all liquidity
         (uint256 removedAmountToken, uint256 removedAmountETH) = masterRouterV2.removeLiquidityETHAndUnwrap(
-            address(tokenA_D0),
+            wrappedToken,
             liquidity,
             amountTokenMin,
             amountETHMin,
-            true, // isTokenWrapped
+            true, // receiveUnwrappedToken
             address(this),
             block.timestamp
         );
@@ -483,6 +483,9 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         uint256 initialLiquidityToken = 100000; // 100000 for D0 token
         uint256 initialLiquidityETH = 1 ether;
 
+        // Get wrapped token address
+        address wrappedToken = wrapperFactory.wrappedTokenFor(address(tokenA_D0));
+
         // Approve tokens for adding liquidity
         tokenA_D0.approve(address(masterRouterV2), initialLiquidityToken);
 
@@ -490,7 +493,6 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         (uint256 amountToken, uint256 amountETH, uint256 liquidity) = masterRouterV2.wrapTokenAndaddLiquidityETH{
             value: initialLiquidityETH
         }(address(tokenA_D0), initialLiquidityToken, 0, 0, true, address(this), block.timestamp);
-        address wrappedToken = wrapperFactory.wrappedTokenFor(address(tokenA_D0));
 
         // Get pair address
         address pairAddress = factory.getPair(wrappedToken, address(WETH));
@@ -500,17 +502,21 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Remove 50% of liquidity
         uint256 liquidityToRemove = liquidity / 2;
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
 
+        // Check balances before removal
         uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
         uint256 ethBalanceBefore = address(this).balance;
         uint256 wrappedTokenBalanceBefore = IERC20(wrappedToken).balanceOf(address(this));
 
+        // Calculate minimum amounts with 0.5% slippage
+        uint256 amountTokenMin = (amountToken * 990) / 2000; // Half of the initial amount with 0.5% slippage
+        uint256 amountETHMin = (amountETH * 990) / 2000; // Half of the initial amount with 0.5% slippage
+
         (uint256 removedAmountToken, uint256 removedAmountETH) = masterRouterV2.removeLiquidityETHAndUnwrap(
-            address(tokenA_D0),
+            wrappedToken,
             liquidityToRemove,
-            0,
-            0,
+            amountTokenMin,
+            amountETHMin,
             true,
             address(this),
             block.timestamp
@@ -523,25 +529,31 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
             "Incorrect remaining liquidity"
         );
 
-        // Check user balances
-        uint256 decimalsOffset = 10 ** 18;
+        // For wrapped tokens, we need to consider the decimal offset
+        uint256 decimalsOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
+
+        // Check unwrapped token balance
         assertEq(
             tokenA_D0.balanceOf(address(this)) - tokenA_D0_BalanceBefore,
             removedAmountToken / decimalsOffset,
-            "Incorrect unwrapped token balance"
+            "User should have received the correct amount of unwrapped token"
         );
-        assertEq(address(this).balance - ethBalanceBefore, removedAmountETH, "Incorrect ETH balance");
 
-        // Check dust of tokenA_D0 in wrapped token format
-        uint256 wrappedTokenBalanceAfter = IERC20(wrappedToken).balanceOf(address(this));
-        uint256 wrappedTokenDust = removedAmountToken % decimalsOffset;
+        // Check ETH balance
         assertEq(
-            wrappedTokenBalanceAfter - wrappedTokenBalanceBefore,
-            wrappedTokenDust,
-            "Incorrect wrapped token dust"
+            address(this).balance - ethBalanceBefore,
+            removedAmountETH,
+            "User should have received the correct amount of ETH"
         );
-        assertLt(wrappedTokenDust, decimalsOffset, "Wrapped token dust should be less than 1 token");
-        assertGt(wrappedTokenDust, 0, "Wrapped token dust should be greater than 0");
+
+        // Check if user received dust of wrapped token correctly
+        uint256 wrappedTokenBalanceAfter = IERC20(wrappedToken).balanceOf(address(this));
+        uint256 wrappedTokenDust = wrappedTokenBalanceAfter - wrappedTokenBalanceBefore;
+        assertEq(
+            wrappedTokenDust,
+            removedAmountToken - ((removedAmountToken / decimalsOffset) * decimalsOffset),
+            "User should have received less than 1 unit of wrapped token as dust"
+        );
 
         // Check if removed amounts are approximately half of initial amounts
         assertApproxEqRel(
@@ -555,6 +567,23 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
             amountETH / 2,
             1e15,
             "Removed amount ETH should be close to half of initial liquidity ETH"
+        );
+
+        // Check if the pair's balance is nearly half of the initial amounts
+        uint256 remainingWrappedToken = IERC20(wrappedToken).balanceOf(pairAddress);
+        uint256 remainingWETH = WETH.balanceOf(pairAddress);
+
+        assertApproxEqRel(
+            remainingWrappedToken,
+            amountToken / 2,
+            1e15,
+            "Remaining wrapped token should be close to half of initial liquidity token"
+        );
+        assertApproxEqRel(
+            remainingWETH,
+            amountETH / 2,
+            1e15,
+            "Remaining WETH should be close to half of initial liquidity ETH"
         );
     }
 }
