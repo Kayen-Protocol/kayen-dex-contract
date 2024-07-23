@@ -203,8 +203,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
 
         address underlyingA = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA);
         address underlyingB = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB);
-        uint256 decimalsOffsetA = underlyingA == address(0) ? IChilizWrappedERC20(tokenA).getDecimalsOffset() : 0;
-        uint256 decimalsOffsetB = underlyingB == address(0) ? IChilizWrappedERC20(tokenB).getDecimalsOffset() : 0;
+        uint256 decimalsOffsetA = underlyingA == address(0) ? 0 : IChilizWrappedERC20(tokenA).getDecimalsOffset();
+        uint256 decimalsOffsetB = underlyingB == address(0) ? 0 : IChilizWrappedERC20(tokenB).getDecimalsOffset();
 
         (uint256 amount0, uint256 amount1) = _removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin);
 
@@ -235,7 +235,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
         address underlying = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(token);
-        uint256 decimalsOffset = underlying == address(0) ? IChilizWrappedERC20(token).getDecimalsOffset() : 0;
+        uint256 decimalsOffset = underlying == address(0) ? 0 : IChilizWrappedERC20(token).getDecimalsOffset();
 
         (amountToken, amountETH) = _removeLiquidity(token, WETH, liquidity, amountTokenMin, amountETHMin);
 
