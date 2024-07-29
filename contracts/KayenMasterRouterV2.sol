@@ -8,12 +8,15 @@ import "./interfaces/IChilizWrappedERC20.sol";
 import "./interfaces/IWETH.sol";
 import "./libraries/KayenLibrary.sol";
 import "./libraries/TransferHelper.sol";
+import "./libraries/SafeERC20.sol";
 
 /// @title KayenMasterRouterV2
 /// @notice This contract provides advanced routing capabilities for the Kayen decentralized exchange
 /// @dev Implements the IKayenMasterRouterV2 interface
 /// @dev Handles token wrapping, liquidity provision, and swaps with support for both wrapped and unwrapped tokens
 contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
+    // using SafeERC20 for IERC20;
+
     /// @notice Address of the Kayen factory contract
     /// @dev This is immutable and set in the constructor
     address public immutable factory;
@@ -245,6 +248,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     }
 
     function _swap(uint256[] memory amounts, address[] memory path, address _to) internal virtual {
+        require(amounts.length == path.length, "Amounts and path length mismatch");
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0, ) = KayenLibrary.sortTokens(input, output);
@@ -570,7 +574,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 allowance = IERC20(token).allowance(address(this), wrapperFactory);
         if (allowance < amount) {
             // Approve the maximum possible amount
-            IERC20(token).approve(wrapperFactory, type(uint256).max);
+            SafeERC20.safeApprove(IERC20(token), wrapperFactory, type(uint256).max);
         }
         wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
     }
@@ -579,7 +583,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 allowance = IERC20(token).allowance(address(this), wrapperFactory);
         if (allowance < amount) {
             // Approve the maximum possible amount
-            IERC20(token).approve(wrapperFactory, type(uint256).max);
+            SafeERC20.safeApprove(IERC20(token), wrapperFactory, type(uint256).max);
         }
         IChilizWrapperFactory(wrapperFactory).unwrap(to, token, amount);
     }
@@ -638,7 +642,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
                 uint256 amountAOptimal = KayenLibrary.quote(amountBDesired, reserveB, reserveA);
-                assert(amountAOptimal <= amountADesired);
+                if (amountAOptimal > amountADesired) revert ExcessiveInputAmount();
                 if (amountAOptimal < amountAMin) revert InsufficientAAmount();
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
