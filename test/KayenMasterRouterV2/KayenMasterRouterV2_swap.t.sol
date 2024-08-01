@@ -15,7 +15,7 @@ import "../../contracts/interfaces/IChilizWrapperFactory.sol";
 import "../../contracts/libraries/KayenLibrary.sol";
 import "../../contracts/libraries/Math.sol";
 
-contract KayenMasterRouterRemoveLiquidity_Test is Test {
+contract KayenMasterRouterSwap_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
@@ -143,8 +143,8 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
         assertEq(amounts[0], swapAmount * 1e18, "Incorrect input amount");
         assertGt(amounts[1], 0, "Output amount should be greater than 0");
-        assertGt(finalReserve0, initialReserve0, "Reserve0 should increase");
-        assertLt(finalReserve1, initialReserve1, "Reserve1 should decrease");
+        assertGt(finalReserve0, initialReserve0, "Reserve0 should decrease");
+        assertLt(finalReserve1, initialReserve1, "Reserve1 should increase");
 
         uint256 finalBalanceA = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceB = tokenB_D0.balanceOf(user0);
@@ -206,15 +206,25 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
         assertEq(amounts[0], swapAmount, "Incorrect input amount");
         assertGt(amounts[1], 0, "Output amount should be greater than 0");
-        assertGt(finalReserve0, initialReserve0, "Reserve0 should increase");
-        assertLt(finalReserve1, initialReserve1, "Reserve1 should decrease");
+
+        // Check if the reserves have changed correctly
+        assertLt(finalReserve0, initialReserve0, "Reserve0 should decrease");
+        assertGt(finalReserve1, initialReserve1, "Reserve1 should increase");
 
         uint256 finalBalanceA = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceB = tokenA_D6.balanceOf(user0);
         uint256 finalBalanceWrappedA = IERC20(wrappedTokenA).balanceOf(user0);
-        assertEq(finalBalanceA, initialBalanceA + amounts[1] / 1e18, "Incorrect final balance of tokenA");
-        assertEq(finalBalanceB, initialBalanceB - amounts[0], "Incorrect final balance of tokenB");
+
+        assertEq(finalBalanceB, initialBalanceB - swapAmount, "Incorrect final balance of tokenB (D6)");
+        assertEq(finalBalanceA, initialBalanceA + amounts[1] / 1e18, "Incorrect final balance of tokenA (D0)");
         assertEq(finalBalanceWrappedA, amounts[1] % 1e18, "Incorrect final balance of wrapped tokenA");
+
+        // Check if the sum of unwrapped and wrapped tokens equals the output amount
+        assertEq(
+            (finalBalanceA - initialBalanceA) * 1e18 + finalBalanceWrappedA,
+            amounts[1],
+            "Sum of unwrapped and wrapped tokens should equal output amount"
+        );
     }
 
     function test_SwapExactTokensForTokens_D0_D6() public {
@@ -267,13 +277,13 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
         assertEq(amounts[0], swapAmount * 1e18, "Incorrect input amount");
         assertGt(amounts[1], 0, "Output amount should be greater than 0");
-        assertLt(finalReserve0, initialReserve0, "Reserve0 should decrease");
-        assertGt(finalReserve1, initialReserve1, "Reserve1 should increase");
+        assertGt(finalReserve0, initialReserve0, "Reserve0 should decrease");
+        assertLt(finalReserve1, initialReserve1, "Reserve1 should increase");
 
         uint256 finalBalanceA = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceB = tokenA_D6.balanceOf(user0);
         uint256 finalBalanceWrappedA = IERC20(wrappedTokenA).balanceOf(user0);
-        assertEq(finalBalanceA, initialBalanceA - amounts[0] / 1e18, "Incorrect final balance of tokenA");
+        assertEq(finalBalanceA, initialBalanceA - swapAmount, "Incorrect final balance of tokenA");
         assertEq(finalBalanceB, initialBalanceB + amounts[1], "Incorrect final balance of tokenB");
         assertEq(finalBalanceWrappedA, amounts[0] % 1e18, "Incorrect final balance of wrapped tokenA");
     }

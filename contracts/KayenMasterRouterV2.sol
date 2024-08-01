@@ -63,8 +63,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     /// @param tokenB Address of the second token in the pair
     /// @param amountADesired The amount of tokenA to add as liquidity if the B/A price is <= amountBDesired/amountADesired (A depreciates)
     /// @param amountBDesired The amount of tokenB to add as liquidity if the A/B price is <= amountADesired/amountBDesired (B depreciates)
-    /// @param amountAMin Minimum amount of tokenA to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
-    /// @param amountBMin Minimum amount of tokenB to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
+    /// @param amountAMin Minimum amount of tokenA to add as liquidity. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param amountBMin Minimum amount of tokenB to add as liquidity. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
     /// @param wrapTokenA Boolean indicating whether tokenA should be wrapped
     /// @param wrapTokenB Boolean indicating whether tokenB should be wrapped
     /// @param to Recipient of the liquidity tokens
@@ -89,27 +89,24 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountADesired);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, address(this), amountBDesired);
 
-        (
-            address adjustedTokenA,
-            uint256 adjustedAmountADesired,
-            uint256 adjustedAmountAMin,
-            uint256 decimalsOffsetA
-        ) = _adjustToken(tokenA, amountADesired, amountAMin, wrapTokenA);
-        (
-            address adjustedTokenB,
-            uint256 adjustedAmountBDesired,
-            uint256 adjustedAmountBMin,
-            uint256 decimalsOffsetB
-        ) = _adjustToken(tokenB, amountBDesired, amountBMin, wrapTokenB);
+        (address adjustedTokenA, uint256 adjustedAmountADesired, uint256 decimalsOffsetA) = _adjustToken(
+            tokenA,
+            amountADesired,
+            wrapTokenA
+        );
+        (address adjustedTokenB, uint256 adjustedAmountBDesired, uint256 decimalsOffsetB) = _adjustToken(
+            tokenB,
+            amountBDesired,
+            wrapTokenB
+        );
 
-        // Note: adjustedAmountAMin and adjustedAmountBMin are used here, which account for wrapped/unwrapped state
         (amountA, amountB) = _addLiquidity(
             adjustedTokenA,
             adjustedTokenB,
             adjustedAmountADesired,
             adjustedAmountBDesired,
-            adjustedAmountAMin,
-            adjustedAmountBMin
+            amountAMin,
+            amountBMin
         );
 
         address pair = KayenLibrary.pairFor(factory, adjustedTokenA, adjustedTokenB);
@@ -124,7 +121,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     /// @notice Wraps tokens if necessary and adds liquidity to a Kayen pool with ETH
     /// @param token Address of the token to be paired with ETH
     /// @param amountTokenDesired The amount of token to add as liquidity if the ETH/token price is <= msg.value/amountTokenDesired (token depreciates)
-    /// @param amountTokenMin Minimum amount of token to add as liquidity. For unwrapped tokens, this is the raw token amount. For wrapped tokens, this represents the equivalent wrapped token amount.
+    /// @param amountTokenMin Minimum amount of token to add as liquidity. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
     /// @param amountETHMin Minimum amount of ETH to add as liquidity
     /// @param wrapToken Boolean indicating whether the token should be wrapped
     /// @param to Recipient of the liquidity tokens
@@ -152,19 +149,18 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
 
         TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
 
-        (
-            address adjustedToken,
-            uint256 adjustedAmountDesired,
-            uint256 adjustedAmountMin,
-            uint256 decimalsOffset
-        ) = _adjustToken(token, amountTokenDesired, amountTokenMin, wrapToken);
+        (address adjustedToken, uint256 adjustedAmountDesired, uint256 decimalsOffset) = _adjustToken(
+            token,
+            amountTokenDesired,
+            wrapToken
+        );
 
         (amountToken, amountETH) = _addLiquidity(
             adjustedToken,
             WETH,
             adjustedAmountDesired,
             msg.value,
-            adjustedAmountMin,
+            amountTokenMin,
             amountETHMin
         );
         address pair = KayenLibrary.pairFor(factory, adjustedToken, WETH);
@@ -183,8 +179,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     /// @param tokenA The address of the first token in the pair (must be wrapped or regular token, not unwrapped)
     /// @param tokenB The address of the second token in the pair (must be wrapped or regular token, not unwrapped)
     /// @param liquidity The amount of liquidity tokens to burn
-    /// @param amountAMin The minimum amount of tokenA that must be received for the transaction not to revert
-    /// @param amountBMin The minimum amount of tokenB that must be received for the transaction not to revert
+    /// @param amountAMin The minimum amount of tokenA that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param amountBMin The minimum amount of tokenB that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
     /// @param receiveUnwrappedTokenA If true, tokenA will be unwrapped before being sent to the recipient
     /// @param receiveUnwrappedTokenB If true, tokenB will be unwrapped before being sent to the recipient
     /// @param to The address that will receive the tokens
@@ -222,8 +218,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     /// @param token The address of the token in the pair with ETH (must be wrapped or regular token, not unwrapped)
     /// @param liquidity The amount of liquidity tokens to burn
     /// @param amountTokenMin The minimum amount of token that must be received for the transaction not to revert
-    /// @param amountETHMin The minimum amount of ETH that must be received for the transaction not to revert
-    /// @param receiveUnwrappedToken If true, the token will be unwrapped before being sent to the recipient
+    /// @param amountETHMin The minimum amount of ETH that must be received for the transaction not to revert. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
+    /// @param receiveUnwrappedToken If true, the token will be unwrapped before being sent to the recipient. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
     /// @param to The address that will receive the token and ETH
     /// @param deadline Unix timestamp after which the transaction will revert
     /// @return amountToken The amount of token received (in wrapped token amount, regardless of receiveUnwrappedToken)
@@ -288,7 +284,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
 
         if (unwrappedTokenIn != address(0)) {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
-            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, amountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
@@ -346,7 +342,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         if (unwrappedTokenIn != address(0)) {
             uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(path[0]).getDecimalsOffset() + 1;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
-            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, 0, true);
+            (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, true);
             require(tokenIn == path[0] && amountIn > amounts[0], "MV2: INVALID_AMOUNTIN");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
@@ -440,7 +436,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             uint256 decimalsOffset = IChilizWrappedERC20(tokenIn).getDecimalsOffset();
             uint256 unwrappedAmountIn = (amountIn + decimalsOffset - 1) / decimalsOffset;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
-            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, 0, true);
+            (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
             require(amountIn >= amounts[0], "MV2: INVALID_AMOUNTIN");
 
@@ -487,7 +483,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         // if tokenIn is unwrapped
         if (unwrappedTokenIn != address(0)) {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
-            (tokenIn, amountIn, , ) = _adjustToken(unwrappedTokenIn, amountIn, 0, true);
+            (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, amountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
             TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
@@ -597,26 +593,15 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     function _adjustToken(
         address token,
         uint256 amountDesired,
-        uint256 amountMin,
         bool wrap
-    )
-        private
-        returns (
-            address adjustedToken,
-            uint256 adjustedAmountDesired,
-            uint256 adjustedAmountMin,
-            uint256 decimalsOffset
-        )
-    {
+    ) private returns (address adjustedToken, uint256 adjustedAmountDesired, uint256 decimalsOffset) {
         if (wrap) {
             adjustedToken = _approveAndWrap(token, amountDesired);
             decimalsOffset = IChilizWrappedERC20(adjustedToken).getDecimalsOffset();
             adjustedAmountDesired = amountDesired * decimalsOffset;
-            adjustedAmountMin = amountMin * decimalsOffset;
         } else {
             adjustedToken = token;
             adjustedAmountDesired = amountDesired;
-            adjustedAmountMin = amountMin;
         }
     }
 

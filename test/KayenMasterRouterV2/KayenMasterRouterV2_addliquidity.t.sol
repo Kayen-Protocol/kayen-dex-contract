@@ -478,17 +478,17 @@ contract KayenMasterRouter_Test is Test {
 
         // Add liquidity for second user
         (uint256 amountA2Used, uint256 amountB2Used, uint256 liquidityUser1) = masterRouterV2.wrapTokensAndaddLiquidity(
-            address(tokenA_D6),
-            address(tokenB_D18),
-            amountA2,
-            amountB2,
-            0,
-            0,
-            false, // tokenA_D6 is not wrapped
-            false, // tokenB_D18 is not wrapped
-            user1,
-            block.timestamp
-        );
+                address(tokenA_D6),
+                address(tokenB_D18),
+                amountA2,
+                amountB2,
+                0,
+                0,
+                false, // tokenA_D6 is not wrapped
+                false, // tokenB_D18 is not wrapped
+                user1,
+                block.timestamp
+            );
         vm.stopPrank();
 
         // Get pair address
@@ -531,8 +531,10 @@ contract KayenMasterRouter_Test is Test {
 
         KayenPair pair = KayenPair(pairAddress);
 
-        assertEq(pair.token0(), address(tokenA_D6));
-        assertEq(pair.token1(), wrappedTokenA_D0);
+        // Determine token order
+        address token0 = pair.token0();
+        address token1 = pair.token1();
+
         // Approve tokens for wrapping
         tokenA_D0.approve(address(wrapperFactory), 1000);
 
@@ -560,29 +562,41 @@ contract KayenMasterRouter_Test is Test {
             address(tokenA_D6),
             1000,
             2000000,
-            1000,
-            1900000,
+            1000 * 1e18, // Wrapped amount for tokenA_D0 (0 to 18 decimals)
+            1900000, // tokenA_D6 already has 6 decimals
             true,
             false,
             address(this),
             block.timestamp
         );
 
-        assertEq(
-            IERC20(wrappedTokenA_D0).balanceOf(pairAddress),
-            expectedWrappedAmountA + 1000 * 1e18,
-            "Incorrect wrapped tokenA balance in pair"
-        );
+        // Check balances based on token order
+        if (token0 == wrappedTokenA_D0) {
+            assertEq(
+                IERC20(wrappedTokenA_D0).balanceOf(pairAddress),
+                expectedWrappedAmountA + 1000 * 1e18,
+                "Incorrect wrapped tokenA balance in pair"
+            );
+            assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenB balance in pair");
+            assertEq(amountA, expectedWrappedAmountA, "Incorrect wrapped amount for tokenA");
+            assertEq(amountB, 2000000, "Incorrect amount for tokenB");
+        } else {
+            assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenA balance in pair");
+            assertEq(
+                IERC20(wrappedTokenA_D0).balanceOf(pairAddress),
+                expectedWrappedAmountA + 1000 * 1e18,
+                "Incorrect wrapped tokenB balance in pair"
+            );
+            assertEq(amountA, 2000000, "Incorrect amount for tokenA");
+            assertEq(amountB, expectedWrappedAmountA, "Incorrect wrapped amount for tokenB");
+        }
 
-        assertEq(amountA, expectedWrappedAmountA, "Incorrect wrapped amount for tokenA");
-        assertEq(amountB, 2000000, "Incorrect amount for tokenB");
         // Calculate expected liquidity
         uint256 expectedLiquidity = Math.sqrt(amountA * amountB);
         assertApproxEqRel(liquidity, expectedLiquidity, 1e15, "Liquidity not within 0.1% tolerance");
 
         // Additional checks
         assertEq(tokenA_D0.balanceOf(pairAddress), 0, "Original tokenA should not be in the pair");
-        assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenB balance in pair");
     }
 
     function test_AddLiquidityAmountBOptimalIsOk_D6_D18() public {
