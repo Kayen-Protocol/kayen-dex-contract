@@ -418,13 +418,14 @@ contract KayenMasterRouterSwap_Test is Test {
         (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
 
         uint256 initialBalanceToken = tokenA_D0.balanceOf(user0);
+        uint256 initialBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
         uint256 initialBalanceETH = user0.balance;
 
         address[] memory path = new address[](2);
         path[0] = address(WETH);
         path[1] = wrappedTokenA;
 
-        uint256 swapAmount = 0.1 ether;
+        uint256 swapAmount = 0.2 ether;
         vm.startPrank(user0);
         uint256[] memory amounts = masterRouterV2.swapExactETHForTokens{value: swapAmount}(
             0,
@@ -449,10 +450,16 @@ contract KayenMasterRouterSwap_Test is Test {
             assertLt(finalReserve0, initialReserve0, "Reserve0 (wrapped token) should decrease");
             assertGt(finalReserve1, initialReserve1, "Reserve1 (WETH) should increase");
         }
-
+        
         uint256 finalBalanceToken = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceETH = user0.balance;
         uint256 finalBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
+        console.log(initialBalanceToken);
+        console.log(initialBalanceWrappedToken);
+        
+        console.log(finalBalanceToken);
+        console.log(finalBalanceWrappedToken);
+
         assertEq(finalBalanceToken, initialBalanceToken + amounts[1] / 1e18, "Incorrect final balance of tokenA_D0");
         assertEq(finalBalanceETH, initialBalanceETH - swapAmount, "Incorrect final balance of ETH");
         assertEq(finalBalanceWrappedToken, amounts[1] % 1e18, "Incorrect final balance of wrapped token");

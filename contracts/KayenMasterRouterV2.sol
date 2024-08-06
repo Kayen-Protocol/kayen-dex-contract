@@ -391,7 +391,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
-        _swap(amounts, path, to);
+        _swap(amounts, path, address(this));
 
         address tokenOut = path[path.length - 1];
         bool isWrapped = receiveUnwrappedToken &&
