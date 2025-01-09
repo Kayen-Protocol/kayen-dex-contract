@@ -26,6 +26,7 @@ contract KayenMinter is Test {
         ERC20MintableMinter i = new ERC20MintableMinter("Token I", "TKNI", 0);
         ERC20MintableMinter j = new ERC20MintableMinter("Token J", "TKNJ", 0);
         ERC20MintableMinter k = new ERC20MintableMinter("Token K", "TKNK", 0);
+        ERC20MintableMinter l = new ERC20MintableMinter("Token L", "TKNL", 0);
 
         tokens.push(address(a));
         tokens.push(address(b));
@@ -44,6 +45,10 @@ contract KayenMinter is Test {
         for (uint256 ii; ii < 11; ii++) {
             ERC20MintableMinter(tokens[ii]).addToWhitelist(address(minter));
         }
+
+        ERC20Minter(minter).addToken(address(l));
+        ERC20MintableMinter(address(l)).addToWhitelist(address(minter));
+        tokens.push(address(l));
 
         vm.stopPrank();
     }
@@ -77,12 +82,12 @@ contract KayenMinter is Test {
             minter.mintBatch(user1);
             // assertEq(balance, 100);
         }
-        for (uint256 i; i < 11; i++) {
+        for (uint256 i; i < 12; i++) {
             uint256 balance = ERC20MintableMinter(tokens[i]).balanceOf(user1);
             console.log(balance);
         }
 
-        for (uint256 i; i < 11; i++) {
+        for (uint256 i; i < 12; i++) {
             uint256 balance = ERC20MintableMinter(tokens[i]).balanceOf(owner);
             console.log(balance);
         }

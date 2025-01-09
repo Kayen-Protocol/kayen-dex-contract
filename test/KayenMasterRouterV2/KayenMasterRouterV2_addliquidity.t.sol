@@ -478,17 +478,17 @@ contract KayenMasterRouter_Test is Test {
 
         // Add liquidity for second user
         (uint256 amountA2Used, uint256 amountB2Used, uint256 liquidityUser1) = masterRouterV2.wrapTokensAndaddLiquidity(
-                address(tokenA_D6),
-                address(tokenB_D18),
-                amountA2,
-                amountB2,
-                0,
-                0,
-                false, // tokenA_D6 is not wrapped
-                false, // tokenB_D18 is not wrapped
-                user1,
-                block.timestamp
-            );
+            address(tokenA_D6),
+            address(tokenB_D18),
+            amountA2,
+            amountB2,
+            0,
+            0,
+            false, // tokenA_D6 is not wrapped
+            false, // tokenB_D18 is not wrapped
+            user1,
+            block.timestamp
+        );
         vm.stopPrank();
 
         // Get pair address
