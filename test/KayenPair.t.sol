@@ -2,20 +2,20 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/KayenFactory.sol";
-import "../src/tokens/KayenERC20.sol";
-import "../src/KayenPair.sol";
+import "../src/FanXFactory.sol";
+import "../src/tokens/FanXERC20.sol";
+import "../src/FanXPair.sol";
 import "../src/libraries/UQ112x112.sol";
 import "../src/mocks/ERC20Mintable.sol";
 
-contract KayenPair_Test is Test {
+contract FanXPair_Test is Test {
     address feeSetter = address(69);
-    KayenERC20 Kayen;
+    FanXERC20 FanX;
 
     ERC20Mintable token0;
     ERC20Mintable token1;
-    KayenFactory factory;
-    KayenPair pair;
+    FanXFactory factory;
+    FanXPair pair;
     TestUser testUser;
 
     function setUp() public {
@@ -24,9 +24,9 @@ contract KayenPair_Test is Test {
         token0 = new ERC20Mintable("Token A", "TKNA");
         token1 = new ERC20Mintable("Token B", "TKNB");
 
-        factory = new KayenFactory(feeSetter);
+        factory = new FanXFactory(feeSetter);
         address pairAddress = factory.createPair(address(token0), address(token1));
-        pair = KayenPair(pairAddress);
+        pair = FanXPair(pairAddress);
 
         token0.mint(10 ether, address(this));
         token1.mint(10 ether, address(this));
@@ -121,7 +121,7 @@ contract KayenPair_Test is Test {
         token0.transfer(address(pair), 1000);
         token1.transfer(address(pair), 1000);
 
-        vm.expectRevert(KayenPair.InsufficientLiquidityMinted.selector);
+        vm.expectRevert(FanXPair.InsufficientLiquidityMinted.selector);
         pair.mint(address(this));
     }
 
@@ -210,7 +210,7 @@ contract KayenPair_Test is Test {
         pair.mint(address(this));
 
         vm.prank(address(0xdeadbeef));
-        vm.expectRevert(KayenPair.InsufficientLiquidityBurned.selector);
+        vm.expectRevert(FanXPair.InsufficientLiquidityBurned.selector);
         pair.burn(address(this));
     }
 
@@ -269,7 +269,7 @@ contract KayenPair_Test is Test {
         token1.transfer(address(pair), 2 ether);
         pair.mint(address(this));
 
-        vm.expectRevert(KayenPair.InsufficientOutputAmount.selector);
+        vm.expectRevert(FanXPair.InsufficientOutputAmount.selector);
         pair.swap(0, 0, address(this), "");
     }
 
@@ -278,10 +278,10 @@ contract KayenPair_Test is Test {
         token1.transfer(address(pair), 2 ether);
         pair.mint(address(this));
 
-        vm.expectRevert(KayenPair.InsufficientLiquidity.selector);
+        vm.expectRevert(FanXPair.InsufficientLiquidity.selector);
         pair.swap(0, 2.1 ether, address(this), "");
 
-        vm.expectRevert(KayenPair.InsufficientLiquidity.selector);
+        vm.expectRevert(FanXPair.InsufficientLiquidity.selector);
         pair.swap(1.1 ether, 0, address(this), "");
     }
 
@@ -305,7 +305,7 @@ contract KayenPair_Test is Test {
 
         token0.transfer(address(pair), 0.1 ether);
 
-        vm.expectRevert(KayenPair.InvalidK.selector);
+        vm.expectRevert(FanXPair.InvalidK.selector);
         pair.swap(0, 0.36 ether, address(this), "");
 
         assertEq(token0.balanceOf(address(this)), 10 ether - 1 ether - 0.1 ether, "unexpected token0 balance");
@@ -320,7 +320,7 @@ contract KayenPair_Test is Test {
 
         token0.transfer(address(pair), 0.1 ether);
 
-        vm.expectRevert(KayenPair.InvalidK.selector);
+        vm.expectRevert(FanXPair.InvalidK.selector);
         pair.swap(0, 0.181322178776029827 ether, address(this), "");
     }
 
@@ -418,13 +418,13 @@ contract TestUser {
         ERC20(token0Address_).transfer(pairAddress_, amount0_);
         ERC20(token1Address_).transfer(pairAddress_, amount1_);
 
-        KayenPair(pairAddress_).mint(address(this));
+        FanXPair(pairAddress_).mint(address(this));
     }
 
     function removeLiquidity(address pairAddress_) public {
         uint256 liquidity = ERC20(pairAddress_).balanceOf(address(this));
         ERC20(pairAddress_).transfer(pairAddress_, liquidity);
-        KayenPair(pairAddress_).burn(address(this));
+        FanXPair(pairAddress_).burn(address(this));
     }
 }
 
@@ -441,10 +441,10 @@ contract Flashloaner {
             expectedLoanAmount = amount1Out;
         }
 
-        KayenPair(pairAddress).swap(amount0Out, amount1Out, address(this), abi.encode(tokenAddress));
+        FanXPair(pairAddress).swap(amount0Out, amount1Out, address(this), abi.encode(tokenAddress));
     }
 
-    function KayenCall(address, uint256, uint256, bytes calldata data) public {
+    function FanXCall(address, uint256, uint256, bytes calldata data) public {
         address tokenAddress = abi.decode(data, (address));
         uint256 balance = ERC20(tokenAddress).balanceOf(address(this));
 

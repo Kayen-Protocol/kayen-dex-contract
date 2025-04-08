@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
-import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
-import {KayenFactory} from "../src/KayenFactory.sol";
+import {FanXMasterRouter} from "../src/FanXMasterRouter.sol";
+import {WrapperFactory} from "../src/utils/WrapperFactory.sol";
+import {FanXFactory} from "../src/FanXFactory.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production
 contract deployAll is Script {
@@ -16,8 +16,8 @@ contract deployAll is Script {
         address router = 0xF4f858acf122d388EF5A603615087DaCa87A5773;
         // address wrapperFactory = 0x2B0471E418451aA33F543EF4160AFf1900A2D818;
 
-        ChilizWrapperFactory wrapperFactory = new ChilizWrapperFactory();
-        KayenMasterRouter masterRouter = new KayenMasterRouter(
+        WrapperFactory wrapperFactory = new WrapperFactory();
+        FanXMasterRouter masterRouter = new FanXMasterRouter(
             routerFactory,
             address(wrapperFactory),
             router,

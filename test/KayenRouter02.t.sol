@@ -2,18 +2,18 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/KayenFactory.sol";
-import "../src/KayenPair.sol";
-import "../src/KayenRouter02.sol";
-import "../src/interfaces/IKayenRouter02.sol";
+import "../src/FanXFactory.sol";
+import "../src/FanXPair.sol";
+import "../src/FanXRouter02.sol";
+import "../src/interfaces/IFanXRouter02.sol";
 import "../src/mocks/ERC20Mintable.sol";
 
-contract KayenRouter02_Test is Test {
+contract FanXRouter02_Test is Test {
     address feeSetter = address(69);
     ERC20Mintable WETH;
 
-    KayenRouter02 router;
-    KayenFactory factory;
+    FanXRouter02 router;
+    FanXFactory factory;
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
@@ -22,8 +22,8 @@ contract KayenRouter02_Test is Test {
     function setUp() public {
         WETH = new ERC20Mintable("Wrapped ETH", "WETH");
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA");
         tokenB = new ERC20Mintable("Token B", "TKNB");
@@ -81,7 +81,7 @@ contract KayenRouter02_Test is Test {
         assertEq(tokenA.balanceOf(pairAddress), 1 ether);
         assertEq(tokenB.balanceOf(pairAddress), 1 ether);
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
         assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
@@ -96,7 +96,7 @@ contract KayenRouter02_Test is Test {
     function test_AddLiquidityAmountBOptimalIsOk() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
         assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
@@ -127,7 +127,7 @@ contract KayenRouter02_Test is Test {
     function test_AddLiquidityAmountBOptimalIsTooLow() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
         assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
 
@@ -138,7 +138,7 @@ contract KayenRouter02_Test is Test {
         tokenA.approve(address(router), 1 ether);
         tokenB.approve(address(router), 2 ether);
 
-        vm.expectRevert(IKayenRouter02.InsufficientBAmount.selector);
+        vm.expectRevert(IFanXRouter02.InsufficientBAmount.selector);
         router.addLiquidity(
             address(tokenA),
             address(tokenB),
@@ -153,7 +153,7 @@ contract KayenRouter02_Test is Test {
 
     function test_AddLiquidityAmountBOptimalTooHighAmountATooLow() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
         assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
@@ -165,7 +165,7 @@ contract KayenRouter02_Test is Test {
         tokenA.approve(address(router), 2 ether);
         tokenB.approve(address(router), 1 ether);
 
-        vm.expectRevert(IKayenRouter02.InsufficientAAmount.selector);
+        vm.expectRevert(IFanXRouter02.InsufficientAAmount.selector);
         router.addLiquidity(
             address(tokenA),
             address(tokenB),
@@ -180,7 +180,7 @@ contract KayenRouter02_Test is Test {
 
     function test_AddLiquidityAmountBOptimalIsTooHighAmountAOk() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         
         assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
         assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
@@ -223,7 +223,7 @@ contract KayenRouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
@@ -263,7 +263,7 @@ contract KayenRouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         liquidity = (liquidity * 3) / 10;
@@ -304,12 +304,12 @@ contract KayenRouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
 
-        vm.expectRevert(IKayenRouter02.InsufficientAAmount.selector);
+        vm.expectRevert(IFanXRouter02.InsufficientAAmount.selector);
         router.removeLiquidity(
             address(tokenA),
             address(tokenB),
@@ -337,12 +337,12 @@ contract KayenRouter02_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         uint256 liquidity = pair.balanceOf(address(this));
 
         pair.approve(address(router), liquidity);
 
-        vm.expectRevert(IKayenRouter02.InsufficientBAmount.selector);
+        vm.expectRevert(IFanXRouter02.InsufficientBAmount.selector);
         router.removeLiquidity(
             address(tokenA),
             address(tokenB),

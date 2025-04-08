@@ -3,26 +3,26 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../src/KayenFactory.sol";
-import "../src/KayenPair.sol";
-import "../src/KayenRouter02.sol";
-import "../src/interfaces/IKayenRouter02.sol";
+import "../src/FanXFactory.sol";
+import "../src/FanXPair.sol";
+import "../src/FanXRouter02.sol";
+import "../src/interfaces/IFanXRouter02.sol";
 import "../src/mocks/ERC20Mintable_decimal.sol";
 import "../src/mocks/MockWETH.sol";
-import "../src/KayenMasterRouter.sol";
-import "../src/utils/ChilizWrapperFactory.sol";
-import "../src/interfaces/IChilizWrapperFactory.sol";
-import "../src/libraries/KayenLibrary.sol";
+import "../src/FanXMasterRouter.sol";
+import "../src/utils/WrapperFactory.sol";
+import "../src/interfaces/IWrapperFactory.sol";
+import "../src/libraries/FanXLibrary.sol";
 
 // @add assertions
-contract KayenMasterRouter_Test is Test {
+contract FanXMasterRouter_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    KayenRouter02 public router;
-    KayenMasterRouter public masterRouter;
-    KayenFactory public factory;
-    IChilizWrapperFactory public wrapperFactory;
+    FanXRouter02 public router;
+    FanXMasterRouter public masterRouter;
+    FanXFactory public factory;
+    IWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA;
     ERC20Mintable public tokenB;
@@ -33,10 +33,10 @@ contract KayenMasterRouter_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
-        wrapperFactory = new ChilizWrapperFactory();
-        masterRouter = new KayenMasterRouter(address(factory), address(wrapperFactory), address(router), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
+        wrapperFactory = new WrapperFactory();
+        masterRouter = new FanXMasterRouter(address(factory), address(wrapperFactory), address(router), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB = new ERC20Mintable("Token B", "TKNB", 0);
@@ -65,7 +65,7 @@ contract KayenMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA)),
             wrapperFactory.wrappedTokenFor(address(tokenB))
         );
-        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = FanXPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         // assertEq(liquidity, 10000000 * 1e18 - 1000);
     }
@@ -76,14 +76,14 @@ contract KayenMasterRouter_Test is Test {
         masterRouter.wrapTokenAndaddLiquidityETH{value: 1 ether}(address(tokenA), 1, 1, 1, user0, block.timestamp);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA)), address(WETH));
-        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = FanXPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         assertEq(liquidity, 1 ether - 1000);
     }
 
     function test_SwapExactTokensForTokens_Loss() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
 
         //FAN tokens have 0 decimals
         assertEq(tokenA.decimals(), 0);
@@ -117,11 +117,11 @@ contract KayenMasterRouter_Test is Test {
         );
 
         // Make sure pool is balanced
-        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 _reserve0, uint112 _reserve1, ) = FanXPair(pairAddress).getReserves();
 
         assertEq(_reserve0, _reserve1);
-        assertEq(_reserve0, liquidityIn * IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset());
-        assertEq(_reserve1, liquidityIn * IChilizWrappedERC20(wrappedTokenB).getDecimalsOffset());
+        assertEq(_reserve0, liquidityIn * IWrappedERC20(wrappedTokenA).getDecimalsOffset());
+        assertEq(_reserve1, liquidityIn * IWrappedERC20(wrappedTokenB).getDecimalsOffset());
 
         // Bob swaps 1 A-FAN token for B-FAN token
         vm.startPrank(_bob);
@@ -170,7 +170,7 @@ contract KayenMasterRouter_Test is Test {
         address wrappedTokenA = wrapperFactory.wrappedTokenFor(address(tokenA));
         address wrappedTokenB = wrapperFactory.wrappedTokenFor(address(tokenB));
         address pairAddress = factory.getPair(address(wrappedTokenA), address(wrappedTokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
         uint256 liquidity = pair.balanceOf(user0);
 
         vm.startPrank(user0);
@@ -218,7 +218,7 @@ contract KayenMasterRouter_Test is Test {
 
     //     address wrappedTokenA = wrapperFactory.wrappedTokenFor(address(tokenA));
     //     address pairAddress = factory.getPair(address(wrappedTokenA), address(WETH));
-    //     KayenPair pair = KayenPair(pairAddress);
+    //     FanXPair pair = FanXPair(pairAddress);
     //     uint256 liquidity = pair.balanceOf(user0);
 
     //     console.log(1, pair.balanceOf(user0));
@@ -238,8 +238,8 @@ contract KayenMasterRouter_Test is Test {
     // }
 
     function test_SwapExactTokensForTokens() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
 
         console.log(1, tokenA.balanceOf(address(this)));
         console.log(2, tokenB.balanceOf(address(this)));
@@ -262,8 +262,8 @@ contract KayenMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA)),
             wrapperFactory.wrappedTokenFor(address(tokenB))
         );
-        uint256 a = KayenPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
+        uint256 a = FanXPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -286,7 +286,7 @@ contract KayenMasterRouter_Test is Test {
         console.log(rmadr, reminder);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         console.log(11, tokenA.balanceOf(address(this)));
@@ -303,8 +303,8 @@ contract KayenMasterRouter_Test is Test {
     }
 
     // function test_SwapTokensForExactTokens() public {
-    //     address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
-    //     address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
+    //     address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+    //     address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
 
     //     uint256 amount = 100000;
     //     uint256 wrappedAmount = 100000*1e18;
@@ -343,7 +343,7 @@ contract KayenMasterRouter_Test is Test {
     // }
 
     function test_SwapExactETHForTokens() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
 
         tokenA.approve(address(wrapperFactory), type(uint256).max);
         wrapperFactory.wrap(address(this), address(tokenA), 100);
@@ -352,8 +352,8 @@ contract KayenMasterRouter_Test is Test {
         router.addLiquidityETH{value: 100 ether}(wrappedTokenA, 100 ether, 0, 0, address(this), type(uint40).max);
 
         address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
-        uint256 a = KayenPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
+        uint256 a = FanXPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -370,7 +370,7 @@ contract KayenMasterRouter_Test is Test {
         masterRouter.swapExactETHForTokens{value: 5 ether}(0, path, user0, type(uint40).max);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         console.log(11, WETH.balanceOf(user0));
@@ -379,8 +379,8 @@ contract KayenMasterRouter_Test is Test {
     }
 
     function test_swapExactTokensForETH() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB));
 
         tokenA.approve(address(wrapperFactory), type(uint256).max);
         wrapperFactory.wrap(address(this), address(tokenA), 100);
@@ -390,8 +390,8 @@ contract KayenMasterRouter_Test is Test {
 
         address pairAddress = factory.getPair(address(WETH), wrapperFactory.wrappedTokenFor(address(tokenA)));
 
-        uint256 pairBalance = KayenPair(pairAddress).balanceOf(address(this));
-        (uint112 _reserve0, uint112 _reserve1, ) = KayenPair(pairAddress).getReserves();
+        uint256 pairBalance = FanXPair(pairAddress).balanceOf(address(this));
+        (uint112 _reserve0, uint112 _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         address[] memory path = new address[](2);
@@ -407,7 +407,7 @@ contract KayenMasterRouter_Test is Test {
         masterRouter.swapExactTokensForETH(address(tokenA), 550, 0, path, user0, type(uint40).max);
         vm.stopPrank();
 
-        (_reserve0, _reserve1, ) = KayenPair(pairAddress).getReserves();
+        (_reserve0, _reserve1, ) = FanXPair(pairAddress).getReserves();
         console.log(_reserve0, _reserve1);
 
         // console.log(11, WETH.balanceOf(user0));
@@ -417,7 +417,7 @@ contract KayenMasterRouter_Test is Test {
     }
 
     function test_SwapETHForExactTokensInteger() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
 
         tokenA.approve(address(wrapperFactory), type(uint256).max);
         wrapperFactory.wrap(address(this), address(tokenA), 100);
@@ -447,7 +447,7 @@ contract KayenMasterRouter_Test is Test {
     }
 
     function test_SwapETHForExactTokensNotInteger() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
 
         tokenA.approve(address(wrapperFactory), type(uint256).max);
         wrapperFactory.wrap(address(this), address(tokenA), 100);
@@ -487,7 +487,7 @@ contract KayenMasterRouter_Test is Test {
 
     function test_SwapETHForExactTokensMinimumAmount() public {
         // Setup similar to previous tests
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA));
 
         // Add liquidity to the pool
         tokenA.approve(address(wrapperFactory), type(uint256).max);
@@ -526,4 +526,4 @@ contract KayenMasterRouter_Test is Test {
     }
 }
 
-// forge test --match-path test/KayenMasterRouter.t.sol -vvvv
+// forge test --match-path test/FanXMasterRouter.t.sol -vvvv

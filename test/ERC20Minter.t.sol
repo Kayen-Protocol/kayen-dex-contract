@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import "../src/mocks/ERC20Minter.sol";
 import "../src/mocks/ERC20MintableMinterWithdecimalForMinter.sol";
 
-contract KayenMinter is Test {
+contract FanXMinter is Test {
     address[] tokens; // = new ERC20MintableMinter[](11);
     ERC20Minter minter;
     address user1 = address(11);
@@ -94,22 +94,22 @@ contract KayenMinter is Test {
     }
 
     // function test_CreatePairZeroAddress() public {
-    //     vm.expectRevert(IKayenFactory.ZeroAddress.selector);
+    //     vm.expectRevert(IFanXFactory.ZeroAddress.selector);
     //     factory.createPair(address(0), address(token0));
 
-    //     vm.expectRevert(IKayenFactory.ZeroAddress.selector);
+    //     vm.expectRevert(IFanXFactory.ZeroAddress.selector);
     //     factory.createPair(address(token1), address(0));
     // }
 
     // function test_CreatePairPairExists() public {
     //     factory.createPair(address(token1), address(token0));
 
-    //     vm.expectRevert(IKayenFactory.PairExists.selector);
+    //     vm.expectRevert(IFanXFactory.PairExists.selector);
     //     factory.createPair(address(token1), address(token0));
     // }
 
     // function test_CreatePairIdenticalTokens() public {
-    //     vm.expectRevert(IKayenFactory.IdenticalAddresses.selector);
+    //     vm.expectRevert(IFanXFactory.IdenticalAddresses.selector);
     //     factory.createPair(address(token0), address(token0));
     // }
 }

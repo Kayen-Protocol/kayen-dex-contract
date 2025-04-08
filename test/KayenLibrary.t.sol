@@ -2,31 +2,31 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/libraries/KayenLibrary.sol";
-import "../src/KayenFactory.sol";
-import "../src/KayenPair.sol";
+import "../src/libraries/FanXLibrary.sol";
+import "../src/FanXFactory.sol";
+import "../src/FanXPair.sol";
 import "../src/mocks/ERC20Mintable.sol";
 
-contract KayenLibrary_Test is Test {
+contract FanXLibrary_Test is Test {
     address feeSetter = address(69);
-    KayenFactory factory;
-    KayenERC20 Kayen;
+    FanXFactory factory;
+    FanXERC20 FanX;
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
     ERC20Mintable tokenC;
     ERC20Mintable tokenD;
 
-    KayenPair pair;
-    KayenPair pair2;
-    KayenPair pair3;
+    FanXPair pair;
+    FanXPair pair2;
+    FanXPair pair3;
 
     function encodeError(string memory error) internal pure returns (bytes memory encoded) {
         encoded = abi.encodeWithSignature(error);
     }
 
     function setUp() public {
-        factory = new KayenFactory(feeSetter);
+        factory = new FanXFactory(feeSetter);
 
         tokenA = new ERC20Mintable("TokenA", "TKNA");
         tokenB = new ERC20Mintable("TokenB", "TKNB");
@@ -39,22 +39,22 @@ contract KayenLibrary_Test is Test {
         tokenD.mint(10 ether, address(this));
 
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
-        pair = KayenPair(pairAddress);
+        pair = FanXPair(pairAddress);
 
         pairAddress = factory.createPair(address(tokenB), address(tokenC));
-        pair2 = KayenPair(pairAddress);
+        pair2 = FanXPair(pairAddress);
 
         pairAddress = factory.createPair(address(tokenC), address(tokenD));
-        pair3 = KayenPair(pairAddress);
+        pair3 = FanXPair(pairAddress);
     }
 
     function test_GetReserves() public {
         tokenA.transfer(address(pair), 1.1 ether);
         tokenB.transfer(address(pair), 0.8 ether);
 
-        KayenPair(address(pair)).mint(address(this));
+        FanXPair(address(pair)).mint(address(this));
 
-        (uint256 reserve0, uint256 reserve1) = KayenLibrary.getReserves(
+        (uint256 reserve0, uint256 reserve1) = FanXLibrary.getReserves(
             address(factory),
             address(tokenA),
             address(tokenB)
@@ -65,52 +65,52 @@ contract KayenLibrary_Test is Test {
     }
 
     function test_Quote() public {
-        uint256 amountOut = KayenLibrary.quote(1 ether, 1 ether, 1 ether);
+        uint256 amountOut = FanXLibrary.quote(1 ether, 1 ether, 1 ether);
         assertEq(amountOut, 1 ether);
 
-        amountOut = KayenLibrary.quote(1 ether, 2 ether, 1 ether);
+        amountOut = FanXLibrary.quote(1 ether, 2 ether, 1 ether);
         assertEq(amountOut, 0.5 ether);
 
-        amountOut = KayenLibrary.quote(1 ether, 1 ether, 2 ether);
+        amountOut = FanXLibrary.quote(1 ether, 1 ether, 2 ether);
         assertEq(amountOut, 2 ether);
     }
 
     function test_PairFor() public {
-        address pairAddress = KayenLibrary.pairFor(address(factory), address(tokenA), address(tokenB));
+        address pairAddress = FanXLibrary.pairFor(address(factory), address(tokenA), address(tokenB));
 
         assertEq(pairAddress, factory.getPair(address(tokenA), address(tokenB)));
     }
 
     function test_PairForTokensSorting() public {
-        address pairAddress = KayenLibrary.pairFor(address(factory), address(tokenB), address(tokenA));
+        address pairAddress = FanXLibrary.pairFor(address(factory), address(tokenB), address(tokenA));
 
         assertEq(pairAddress, factory.getPair(address(tokenA), address(tokenB)));
     }
 
     // function test_PairForNonexistentFactory() public {
-    //     address pairAddress = KayenLibrary.pairFor(address(0xaabbcc), address(tokenB), address(tokenA));
+    //     address pairAddress = FanXLibrary.pairFor(address(0xaabbcc), address(tokenB), address(tokenA));
 
     //     assertEq(pairAddress, 0x83076b5Ae88DE7e1B187956bB69adEE497fFD77F);
     // }
 
     function test_GetAmountOut() public {
-        uint256 amountOut = KayenLibrary.getAmountOut(1000, 1 ether, 1.5 ether);
+        uint256 amountOut = FanXLibrary.getAmountOut(1000, 1 ether, 1.5 ether);
         assertEq(amountOut, 1495);
     }
 
     function test_GetAmountOutZeroInputAmount() public {
-        vm.expectRevert(KayenLibrary.InsufficientInputAmount.selector);
-        KayenLibrary.getAmountOut(0, 1 ether, 1.5 ether);
+        vm.expectRevert(FanXLibrary.InsufficientInputAmount.selector);
+        FanXLibrary.getAmountOut(0, 1 ether, 1.5 ether);
     }
 
     function test_GetAmountOutZeroInputReserve() public {
-        vm.expectRevert(KayenLibrary.InsufficientLiquidity.selector);
-        KayenLibrary.getAmountOut(1000, 0, 1.5 ether);
+        vm.expectRevert(FanXLibrary.InsufficientLiquidity.selector);
+        FanXLibrary.getAmountOut(1000, 0, 1.5 ether);
     }
 
     function test_GetAmountOutZeroOutputReserve() public {
-        vm.expectRevert(KayenLibrary.InsufficientLiquidity.selector);
-        KayenLibrary.getAmountOut(1000, 1 ether, 0);
+        vm.expectRevert(FanXLibrary.InsufficientLiquidity.selector);
+        FanXLibrary.getAmountOut(1000, 1 ether, 0);
     }
 
     function test_GetAmountsOut() public {
@@ -132,7 +132,7 @@ contract KayenLibrary_Test is Test {
         path[2] = address(tokenC);
         path[3] = address(tokenD);
 
-        uint256[] memory amounts = KayenLibrary.getAmountsOut(address(factory), 0.1 ether, path);
+        uint256[] memory amounts = FanXLibrary.getAmountsOut(address(factory), 0.1 ether, path);
 
         assertEq(amounts.length, 4);
         assertEq(amounts[0], 0.1 ether);
@@ -145,28 +145,28 @@ contract KayenLibrary_Test is Test {
         address[] memory path = new address[](1);
         path[0] = address(tokenA);
 
-        vm.expectRevert(KayenLibrary.InvalidPath.selector);
-        KayenLibrary.getAmountsOut(address(factory), 0.1 ether, path);
+        vm.expectRevert(FanXLibrary.InvalidPath.selector);
+        FanXLibrary.getAmountsOut(address(factory), 0.1 ether, path);
     }
 
     function test_GetAmountIn() public {
-        uint256 amountIn = KayenLibrary.getAmountIn(1495, 1 ether, 1.5 ether);
+        uint256 amountIn = FanXLibrary.getAmountIn(1495, 1 ether, 1.5 ether);
         assertEq(amountIn, 1000);
     }
 
     function test_GetAmountInZeroInputAmount() public {
-        vm.expectRevert(KayenLibrary.InsufficientOutputAmount.selector);
-        KayenLibrary.getAmountIn(0, 1 ether, 1.5 ether);
+        vm.expectRevert(FanXLibrary.InsufficientOutputAmount.selector);
+        FanXLibrary.getAmountIn(0, 1 ether, 1.5 ether);
     }
 
     function test_GetAmountInZeroInputReserve() public {
-        vm.expectRevert(KayenLibrary.InsufficientLiquidity.selector);
-        KayenLibrary.getAmountIn(1000, 0, 1.5 ether);
+        vm.expectRevert(FanXLibrary.InsufficientLiquidity.selector);
+        FanXLibrary.getAmountIn(1000, 0, 1.5 ether);
     }
 
     function test_GetAmountInZeroOutputReserve() public {
-        vm.expectRevert(KayenLibrary.InsufficientLiquidity.selector);
-        KayenLibrary.getAmountIn(1000, 1 ether, 0);
+        vm.expectRevert(FanXLibrary.InsufficientLiquidity.selector);
+        FanXLibrary.getAmountIn(1000, 1 ether, 0);
     }
 
     function test_GetAmountsIn() public {
@@ -188,7 +188,7 @@ contract KayenLibrary_Test is Test {
         path[2] = address(tokenC);
         path[3] = address(tokenD);
 
-        uint256[] memory amounts = KayenLibrary.getAmountsIn(address(factory), 0.1 ether, path);
+        uint256[] memory amounts = FanXLibrary.getAmountsIn(address(factory), 0.1 ether, path);
 
         assertEq(amounts.length, 4);
         assertEq(amounts[0], 0.063113405152841847 ether);
@@ -201,7 +201,7 @@ contract KayenLibrary_Test is Test {
         address[] memory path = new address[](1);
         path[0] = address(tokenA);
 
-        vm.expectRevert(KayenLibrary.InvalidPath.selector);
-        KayenLibrary.getAmountsIn(address(factory), 0.1 ether, path);
+        vm.expectRevert(FanXLibrary.InvalidPath.selector);
+        FanXLibrary.getAmountsIn(address(factory), 0.1 ether, path);
     }
 }

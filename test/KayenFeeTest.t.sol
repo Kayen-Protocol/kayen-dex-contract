@@ -2,20 +2,20 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/KayenFactory.sol";
-import "../src/KayenPair.sol";
-import "../src/KayenRouter02.sol";
-import "../src/interfaces/IKayenRouter02.sol";
+import "../src/FanXFactory.sol";
+import "../src/FanXPair.sol";
+import "../src/FanXRouter02.sol";
+import "../src/interfaces/IFanXRouter02.sol";
 import "../src/mocks/ERC20Mintable.sol";
 import "forge-std/console.sol";
 
-contract KayenFee_Test is Test {
+contract FanXFee_Test is Test {
     address feeTo = address(33);
     address liquidityReceiver = address(123);
     ERC20Mintable WETH;
 
-    KayenRouter02 router;
-    KayenFactory factory;
+    FanXRouter02 router;
+    FanXFactory factory;
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
@@ -24,8 +24,8 @@ contract KayenFee_Test is Test {
     function setUp() public {
         WETH = new ERC20Mintable("Wrapped ETH", "WETH");
 
-        factory = new KayenFactory(address(this));
-        router = new KayenRouter02(address(factory), address(WETH));
+        factory = new FanXFactory(address(this));
+        router = new FanXRouter02(address(factory), address(WETH));
 
         tokenA = new ERC20Mintable("Token A", "TKNA");
         tokenB = new ERC20Mintable("Token B", "TKNB");
@@ -60,7 +60,7 @@ contract KayenFee_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA), address(tokenB));
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         // Enable fees
         factory.setFeeTo(feeTo);

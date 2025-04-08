@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IKayenFactory {
+interface IFanXFactory {
     error OnlyFeeSetter();
     error IdenticalAddresses();
     error PairExists();

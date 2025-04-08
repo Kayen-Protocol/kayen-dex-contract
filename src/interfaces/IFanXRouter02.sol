@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "./IKayenRouter01.sol";
+import "./IFanXRouter01.sol";
 
-interface IKayenRouter02 is IKayenRouter01 {
+interface IFanXRouter02 is IFanXRouter01 {
     error Expired();
     error InsufficientBAmount();
     error InsufficientAAmount();

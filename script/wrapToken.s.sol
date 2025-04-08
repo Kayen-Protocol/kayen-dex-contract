@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
-import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
-import {KayenFactory} from "../src/KayenFactory.sol";
-import {KayenRouter02} from "../src/KayenRouter02.sol";
+import {FanXMasterRouter} from "../src/FanXMasterRouter.sol";
+import {WrapperFactory} from "../src/utils/WrapperFactory.sol";
+import {FanXFactory} from "../src/FanXFactory.sol";
+import {FanXRouter02} from "../src/FanXRouter02.sol";
 import {IERC20} from "../src/interfaces/IERC20.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production

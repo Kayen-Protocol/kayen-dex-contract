@@ -3,27 +3,27 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/KayenFactory.sol";
-import "../../src/KayenPair.sol";
-import "../../src/KayenRouter02.sol";
-import "../../src/interfaces/IKayenRouter02.sol";
+import "../../src/FanXFactory.sol";
+import "../../src/FanXPair.sol";
+import "../../src/FanXRouter02.sol";
+import "../../src/interfaces/IFanXRouter02.sol";
 import "../../src/mocks/ERC20Mintable_decimal.sol";
 import "../../src/mocks/MockWETH.sol";
-import "../../src/KayenMasterRouterV2.sol";
-import "../../src/utils/ChilizWrapperFactory.sol";
-import "../../src/interfaces/IChilizWrapperFactory.sol";
-import "../../src/libraries/KayenLibrary.sol";
+import "../../src/FanXMasterRouterV2.sol";
+import "../../src/utils/WrapperFactory.sol";
+import "../../src/interfaces/IWrapperFactory.sol";
+import "../../src/libraries/FanXLibrary.sol";
 import "../../src/libraries/Math.sol";
 
 // @add assertions
-contract KayenMasterRouter_Test is Test {
+contract FanXMasterRouter_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    KayenRouter02 public router;
-    KayenMasterRouterV2 public masterRouterV2;
-    KayenFactory public factory;
-    IChilizWrapperFactory public wrapperFactory;
+    FanXRouter02 public router;
+    FanXMasterRouterV2 public masterRouterV2;
+    FanXFactory public factory;
+    IWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA_D0;
     ERC20Mintable public tokenB_D0;
@@ -41,10 +41,10 @@ contract KayenMasterRouter_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
-        wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
+        wrapperFactory = new WrapperFactory();
+        masterRouterV2 = new FanXMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);
@@ -111,7 +111,7 @@ contract KayenMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA_D0)),
             wrapperFactory.wrappedTokenFor(address(tokenB_D0))
         );
-        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = FanXPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         assertEq(liquidity, 1 ether - 1000);
     }
@@ -130,7 +130,7 @@ contract KayenMasterRouter_Test is Test {
         );
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(WETH));
-        uint256 liquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 liquidity = FanXPair(pairAddress).balanceOf(user0);
         console.logUint(liquidity);
         assertEq(liquidity, 1 ether - 1000);
     }
@@ -160,7 +160,7 @@ contract KayenMasterRouter_Test is Test {
             wrapperFactory.wrappedTokenFor(address(tokenA_D0)),
             wrapperFactory.wrappedTokenFor(address(tokenB_D0))
         );
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
     }
 
     function test_WrapTokensAndAddLiquidity_OneTokenWrapped() public {
@@ -185,7 +185,7 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(tokenB_D18));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
     }
 
     function test_WrapTokensAndAddLiquidity_InsufficientAllowance() public {
@@ -229,12 +229,12 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(address(tokenA_D6), wrapperFactory.wrappedTokenFor(address(tokenA_D0)));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
         // Check expected liquidity amount
-        uint256 expectedLiquidity = Math.sqrt(amountA * amountB) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidity = Math.sqrt(amountA * amountB) - FanXPair(pairAddress).MINIMUM_LIQUIDITY();
 
         // Check actual liquidity amount user has
-        uint256 actualLiquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 actualLiquidity = FanXPair(pairAddress).balanceOf(user0);
 
         // Assert that the actual liquidity is equal to the expected liquidity
         assertEq(actualLiquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
@@ -289,10 +289,10 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(address(tokenA_D6), wrapperFactory.wrappedTokenFor(address(tokenA_D0)));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
 
         // Calculate expected liquidity
-        uint256 expectedLiquidity = Math.sqrt(amountA * amountB) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidity = Math.sqrt(amountA * amountB) - FanXPair(pairAddress).MINIMUM_LIQUIDITY();
 
         // Check if actual liquidity matches expected liquidity
         assertEq(liquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
@@ -329,7 +329,7 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(address(tokenA_D18), wrapperFactory.wrappedTokenFor(address(tokenA_D0)));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
 
         // Check balances
         assertEq(tokenA_D18.balanceOf(pairAddress), 1000 * 1e18);
@@ -358,7 +358,7 @@ contract KayenMasterRouter_Test is Test {
         assertEq(amountB, 1000 * 1e18);
         assertGt(liquidity, 0);
         address pairAddress = factory.getPair(address(tokenA_D18), wrapperFactory.wrappedTokenFor(address(tokenA_D6)));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
 
         // Check balances
         assertEq(tokenA_D18.balanceOf(pairAddress), 2000 * 1e18);
@@ -408,25 +408,25 @@ contract KayenMasterRouter_Test is Test {
         assertEq(tokenA_D18.balanceOf(pairAddress), 1500 * 1e18);
         assertEq(IERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D6))).balanceOf(pairAddress), 750 * 1e18);
         // Check liquidity tokens
-        assertGt(KayenPair(pairAddress).balanceOf(user0), 0);
-        assertGt(KayenPair(pairAddress).balanceOf(user1), 0);
-        assertGt(KayenPair(pairAddress).balanceOf(user0), KayenPair(pairAddress).balanceOf(user1));
+        assertGt(FanXPair(pairAddress).balanceOf(user0), 0);
+        assertGt(FanXPair(pairAddress).balanceOf(user1), 0);
+        assertGt(FanXPair(pairAddress).balanceOf(user0), FanXPair(pairAddress).balanceOf(user1));
 
         // Calculate expected liquidity tokens for user0 and user1
         uint256 expectedLiquidityUser0 = Math.sqrt(1000 * 1e18 * 500 * 1e18) -
-            KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+            FanXPair(pairAddress).MINIMUM_LIQUIDITY();
         uint256 expectedLiquidityUser1 = Math.sqrt(500 * 1e18 * 250 * 1e18);
 
         // Check MINIMUM_LIQUIDITY
         assertEq(
-            KayenPair(pairAddress).totalSupply(),
-            expectedLiquidityUser0 + expectedLiquidityUser1 + KayenPair(pairAddress).MINIMUM_LIQUIDITY(),
+            FanXPair(pairAddress).totalSupply(),
+            expectedLiquidityUser0 + expectedLiquidityUser1 + FanXPair(pairAddress).MINIMUM_LIQUIDITY(),
             "Total supply should include MINIMUM_LIQUIDITY"
         );
 
         // Compare expected and actual liquidity balances
-        assertEq(KayenPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
-        assertEq(KayenPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
 
         // Verify that user0 has more liquidity tokens than user1
         assertGt(expectedLiquidityUser0, expectedLiquidityUser1, "User0 should have more liquidity tokens than User1");
@@ -504,16 +504,16 @@ contract KayenMasterRouter_Test is Test {
 
         // Calculate expected liquidity tokens
         uint256 expectedLiquidityUser0 = Math.sqrt(amountAUsed * amountBUsed) -
-            KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+            FanXPair(pairAddress).MINIMUM_LIQUIDITY();
         uint256 expectedLiquidityUser1 = Math.sqrt(amountA2Used * amountB2Used);
 
-        assertEq(KayenPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
-        assertEq(KayenPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
 
         // Verify total supply
         assertEq(
-            KayenPair(pairAddress).totalSupply(),
-            expectedLiquidityUser0 + expectedLiquidityUser1 + KayenPair(pairAddress).MINIMUM_LIQUIDITY(),
+            FanXPair(pairAddress).totalSupply(),
+            expectedLiquidityUser0 + expectedLiquidityUser1 + FanXPair(pairAddress).MINIMUM_LIQUIDITY(),
             "Incorrect total supply"
         );
 
@@ -529,7 +529,7 @@ contract KayenMasterRouter_Test is Test {
 
         address pairAddress = factory.createPair(wrappedTokenA_D0, address(tokenA_D6));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         // Determine token order
         address token0 = pair.token0();
@@ -602,7 +602,7 @@ contract KayenMasterRouter_Test is Test {
     function test_AddLiquidityAmountBOptimalIsOk_D6_D18() public {
         address pairAddress = factory.createPair(address(tokenA_D6), address(tokenB_D18));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         // Transfer tokens directly to the pair
         tokenA_D6.transfer(pairAddress, 1000000);
@@ -653,7 +653,7 @@ contract KayenMasterRouter_Test is Test {
         }(address(tokenA_D6), 1000000, 900000, 0.9 ether, false, user0, block.timestamp);
 
         address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
-        uint256 userLiquidity = KayenPair(pairAddress).balanceOf(user0);
+        uint256 userLiquidity = FanXPair(pairAddress).balanceOf(user0);
 
         console.log("Amount Token:", amountToken);
         console.log("Amount ETH:", amountETH);
@@ -681,7 +681,7 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(WETH));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
     }
 
     function test_AddLiquidityETH_D6_Unwrapped() public {
@@ -696,7 +696,7 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
     }
 
     function test_AddLiquidityETH_InsufficientAllowance() public {
@@ -726,9 +726,9 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(wrapperFactory.wrappedTokenFor(address(tokenA_D0)), address(WETH));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
 
-        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - FanXPair(pairAddress).MINIMUM_LIQUIDITY();
         assertEq(liquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
 
         assertEq(IERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0))).balanceOf(pairAddress), 1000 * 1e18);
@@ -747,9 +747,9 @@ contract KayenMasterRouter_Test is Test {
         assertGt(liquidity, 0);
 
         address pairAddress = factory.getPair(address(tokenA_D6), address(WETH));
-        assertEq(KayenPair(pairAddress).balanceOf(user0), liquidity);
+        assertEq(FanXPair(pairAddress).balanceOf(user0), liquidity);
 
-        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidity = Math.sqrt(amountToken * amountETH) - FanXPair(pairAddress).MINIMUM_LIQUIDITY();
         assertEq(liquidity, expectedLiquidity, "Actual liquidity does not match expected liquidity");
 
         assertEq(tokenA_D6.balanceOf(pairAddress), 2000000);
@@ -790,15 +790,15 @@ contract KayenMasterRouter_Test is Test {
         assertEq(tokenA_D6.balanceOf(pairAddress), 1500000);
         assertEq(WETH.balanceOf(pairAddress), 1.5 ether);
 
-        assertGt(KayenPair(pairAddress).balanceOf(user0), 0);
-        assertGt(KayenPair(pairAddress).balanceOf(user1), 0);
-        assertGt(KayenPair(pairAddress).balanceOf(user0), KayenPair(pairAddress).balanceOf(user1));
+        assertGt(FanXPair(pairAddress).balanceOf(user0), 0);
+        assertGt(FanXPair(pairAddress).balanceOf(user1), 0);
+        assertGt(FanXPair(pairAddress).balanceOf(user0), FanXPair(pairAddress).balanceOf(user1));
 
-        uint256 expectedLiquidityUser0 = Math.sqrt(1000000 * 1 ether) - KayenPair(pairAddress).MINIMUM_LIQUIDITY();
+        uint256 expectedLiquidityUser0 = Math.sqrt(1000000 * 1 ether) - FanXPair(pairAddress).MINIMUM_LIQUIDITY();
         uint256 expectedLiquidityUser1 = Math.sqrt(500000 * 0.5 ether);
 
-        assertEq(KayenPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
-        assertEq(KayenPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user0), expectedLiquidityUser0, "User0 liquidity balance mismatch");
+        assertEq(FanXPair(pairAddress).balanceOf(user1), expectedLiquidityUser1, "User1 liquidity balance mismatch");
 
         uint256 liquidityRatio = (expectedLiquidityUser0 * 1e18) / expectedLiquidityUser1;
         assertApproxEqRel(liquidityRatio, 2e18, 0.01e18, "Liquidity ratio should be close to 2:1");
@@ -811,7 +811,7 @@ contract KayenMasterRouter_Test is Test {
         address wrappedTokenA_D0 = wrapperFactory.wrap(address(this), address(tokenA_D0), 1000);
         address pairAddress = factory.createPair(wrappedTokenA_D0, address(WETH));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         // Transfer tokens and mint initial liquidity for testing purposes
         IERC20(wrappedTokenA_D0).transfer(pairAddress, 1000 * 1e18);
@@ -847,7 +847,7 @@ contract KayenMasterRouter_Test is Test {
 
         address pairAddress = factory.createPair(address(tokenA_D6), address(WETH));
 
-        KayenPair pair = KayenPair(pairAddress);
+        FanXPair pair = FanXPair(pairAddress);
 
         assertEq(pair.token0(), address(tokenA_D6));
         assertEq(pair.token1(), address(WETH));
@@ -879,4 +879,4 @@ contract KayenMasterRouter_Test is Test {
     }
 }
 
-// forge test --match-path test/KayenMasterRouterV2/KayenMasterRouterV2_addliquidity.t.sol -vvvv
+// forge test --match-path test/FanXMasterRouterV2/FanXMasterRouterV2_addliquidity.t.sol -vvvv

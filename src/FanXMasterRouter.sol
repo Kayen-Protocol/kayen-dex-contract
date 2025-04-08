@@ -2,17 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IKayenRouter02.sol";
-import "./interfaces/IKayenMasterRouter.sol";
-import "./interfaces/IChilizWrapperFactory.sol";
-import "./interfaces/IChilizWrappedERC20.sol";
+import "./interfaces/IFanXRouter02.sol";
+import "./interfaces/IFanXMasterRouter.sol";
+import "./interfaces/IWrapperFactory.sol";
+import "./interfaces/IWrappedERC20.sol";
 import "./interfaces/IWETH.sol";
-import "./libraries/KayenLibrary.sol";
+import "./libraries/FanXLibrary.sol";
 import "./libraries/TransferHelper.sol";
 
 // This is a Master Router contract that wrap under 18 decimal token
 // and interact with router to addliqudity and swap tokens.
-contract KayenMasterRouter is IKayenMasterRouter {
+contract FanXMasterRouter is IFanXMasterRouter {
     address public immutable factory;
     address public immutable WETH;
     address public immutable router;
@@ -51,14 +51,14 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address wrappedTokenA = _approveAndWrap(tokenA, amountADesired);
         address wrappedTokenB = _approveAndWrap(tokenB, amountBDesired);
 
-        uint256 tokenAOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
-        uint256 tokenBOffset = IChilizWrappedERC20(wrappedTokenB).getDecimalsOffset();
+        uint256 tokenAOffset = IWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        uint256 tokenBOffset = IWrappedERC20(wrappedTokenB).getDecimalsOffset();
 
         IERC20(wrappedTokenA).approve(router, IERC20(wrappedTokenA).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
         IERC20(wrappedTokenB).approve(router, IERC20(wrappedTokenB).balanceOf(address(this)));
 
         // add liquidity
-        (amountA, amountB, liquidity) = IKayenRouter02(router).addLiquidity(
+        (amountA, amountB, liquidity) = IFanXRouter02(router).addLiquidity(
             wrappedTokenA,
             wrappedTokenB,
             amountADesired * tokenAOffset,
@@ -84,11 +84,11 @@ contract KayenMasterRouter is IKayenMasterRouter {
         TransferHelper.safeTransferFrom(token, msg.sender, address(this), amountTokenDesired);
         address wrappedToken = _approveAndWrap(token, amountTokenDesired);
 
-        uint256 tokenOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
+        uint256 tokenOffset = IWrappedERC20(wrappedToken).getDecimalsOffset();
 
         IERC20(wrappedToken).approve(router, IERC20(wrappedToken).balanceOf(address(this))); // no need for check return value, bc addliquidity will revert if approve was declined.
 
-        (amountToken, amountETH, liquidity) = IKayenRouter02(router).addLiquidityETH{value: msg.value}(
+        (amountToken, amountETH, liquidity) = IFanXRouter02(router).addLiquidityETH{value: msg.value}(
             wrappedToken,
             amountTokenDesired * tokenOffset,
             amountTokenMin * tokenOffset,
@@ -111,14 +111,14 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address to,
         uint256 deadline
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
-        address pair = KayenLibrary.pairFor(factory, wrappedTokenA, wrappedTokenB);
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
+        address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
+        address pair = FanXLibrary.pairFor(factory, wrappedTokenA, wrappedTokenB);
         TransferHelper.safeTransferFrom(pair, msg.sender, address(this), liquidity);
 
         IERC20(pair).approve(router, liquidity);
 
-        (amountA, amountB) = IKayenRouter02(router).removeLiquidity(
+        (amountA, amountB) = IFanXRouter02(router).removeLiquidity(
             wrappedTokenA,
             wrappedTokenB,
             liquidity,
@@ -128,8 +128,8 @@ contract KayenMasterRouter is IKayenMasterRouter {
             deadline
         );
 
-        uint256 tokenAOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
-        uint256 tokenBOffset = IChilizWrappedERC20(wrappedTokenB).getDecimalsOffset();
+        uint256 tokenAOffset = IWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        uint256 tokenBOffset = IWrappedERC20(wrappedTokenB).getDecimalsOffset();
         uint256 tokenAReturnAmount = (amountA / tokenAOffset) * tokenAOffset;
         uint256 tokenBReturnAmount = (amountB / tokenBOffset) * tokenBOffset;
 
@@ -137,10 +137,10 @@ contract KayenMasterRouter is IKayenMasterRouter {
         IERC20(wrappedTokenB).approve(wrapperFactory, tokenBReturnAmount); // no need for check return value, bc addliquidity will revert if approve was declined.
 
         if (tokenAReturnAmount > 0) {
-            IChilizWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenA, tokenAReturnAmount);
+            IWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenA, tokenAReturnAmount);
         }
         if (tokenBReturnAmount > 0) {
-            IChilizWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenB, tokenBReturnAmount);
+            IWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenB, tokenBReturnAmount);
         }
 
         // transfer dust as wrapped token
@@ -160,13 +160,13 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address to,
         uint256 deadline
     ) public virtual override returns (uint256 amountToken, uint256 amountETH) {
-        address wrappedToken = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(token);
-        address pair = KayenLibrary.pairFor(factory, wrappedToken, address(WETH));
+        address wrappedToken = IWrapperFactory(wrapperFactory).wrappedTokenFor(token);
+        address pair = FanXLibrary.pairFor(factory, wrappedToken, address(WETH));
         TransferHelper.safeTransferFrom(pair, msg.sender, address(this), liquidity);
 
         IERC20(pair).approve(router, liquidity);
 
-        (amountToken, amountETH) = IKayenRouter02(router).removeLiquidityETH(
+        (amountToken, amountETH) = IFanXRouter02(router).removeLiquidityETH(
             wrappedToken,
             liquidity,
             amountTokenMin,
@@ -175,13 +175,13 @@ contract KayenMasterRouter is IKayenMasterRouter {
             deadline
         );
 
-        uint256 tokenOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
+        uint256 tokenOffset = IWrappedERC20(wrappedToken).getDecimalsOffset();
         uint256 tokenReturnAmount = (amountToken / tokenOffset) * tokenOffset;
 
         IERC20(wrappedToken).approve(wrapperFactory, tokenReturnAmount); // no need for check return value, bc addliquidity will revert if approve was declined.
 
         if (tokenReturnAmount > 0) {
-            IChilizWrapperFactory(wrapperFactory).unwrap(to, wrappedToken, tokenReturnAmount);
+            IWrapperFactory(wrapperFactory).unwrap(to, wrappedToken, tokenReturnAmount);
         }
         // transfer dust as wrapped token
         if (amountToken - tokenReturnAmount > 0) {
@@ -200,7 +200,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address to,
         uint256 deadline
     ) external virtual override returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
-        address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
+        address wrappedTokenIn = IWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
 
         require(path[0] == wrappedTokenIn, "MS: !path");
 
@@ -208,7 +208,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-        amounts = IKayenRouter02(router).swapExactTokensForTokens(
+        amounts = IFanXRouter02(router).swapExactTokensForTokens(
             IERC20(wrappedTokenIn).balanceOf(address(this)),
             amountOutMin,
             path,
@@ -227,20 +227,20 @@ contract KayenMasterRouter is IKayenMasterRouter {
     //     address to,
     //     uint256 deadline
     // ) external virtual returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
-    //     address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
+    //     address wrappedTokenIn = IWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
 
     //     require(path[0] == wrappedTokenIn, "MS: !path");
     //     address wrappedTokenOut = path[path.length - 1];
-    //     uint256 tokenOutOffset = IChilizWrappedERC20(wrappedTokenOut).getDecimalsOffset();
+    //     uint256 tokenOutOffset = IWrappedERC20(wrappedTokenOut).getDecimalsOffset();
 
-    //     amounts = KayenLibrary.getAmountsIn(factory, amountOut*tokenOutOffset, path);
+    //     amounts = FanXLibrary.getAmountsIn(factory, amountOut*tokenOutOffset, path);
 
     //     TransferHelper.safeTransferFrom(originTokenAddress, msg.sender, address(this), amounts[0]);
     //     IERC20(originTokenAddress).approve(wrapperFactory, amounts[0]); // no need for check return value, bc addliquidity will revert if approve was declined.
-    //     IChilizWrapperFactory(wrapperFactory).wrap(address(this), originTokenAddress, amounts[0]);
+    //     IWrapperFactory(wrapperFactory).wrap(address(this), originTokenAddress, amounts[0]);
     //     IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-    //     IKayenRouter02(router).swapTokensForExactTokens( // no need to get return value
+    //     IFanXRouter02(router).swapTokensForExactTokens( // no need to get return value
     //         amountOut*tokenOutOffset,
     //         amountInMax,
     //         path,
@@ -254,7 +254,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
     //     IERC20(wrappedTokenOut).approve(wrapperFactory, tokenOutReturnAmount); // no need for check return value, bc addliquidity will revert if approve was declined.
 
     //     if (tokenOutReturnAmount > 0) {
-    //         IChilizWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenOut, tokenOutReturnAmount);
+    //         IWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenOut, tokenOutReturnAmount);
     //     }
 
     //     // transfer dust as wrapped token
@@ -277,7 +277,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         override
         returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder)
     {
-        amounts = IKayenRouter02(router).swapExactETHForTokens{value: msg.value}(
+        amounts = IFanXRouter02(router).swapExactETHForTokens{value: msg.value}(
             amountOutMin,
             path,
             address(this),
@@ -295,7 +295,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address to,
         uint256 deadline
     ) external virtual override returns (uint256[] memory amounts) {
-        address wrappedTokenIn = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
+        address wrappedTokenIn = IWrapperFactory(wrapperFactory).wrappedTokenFor(originTokenAddress);
 
         require(path[0] == wrappedTokenIn, "MS: !path");
 
@@ -303,7 +303,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         _approveAndWrap(originTokenAddress, amountIn);
         IERC20(wrappedTokenIn).approve(router, IERC20(wrappedTokenIn).balanceOf(address(this)));
 
-        amounts = IKayenRouter02(router).swapExactTokensForETH(
+        amounts = IFanXRouter02(router).swapExactTokensForETH(
             IERC20(wrappedTokenIn).balanceOf(address(this)),
             amountOutMin,
             path,
@@ -319,7 +319,7 @@ contract KayenMasterRouter is IKayenMasterRouter {
         address to,
         uint256 deadline
     ) external payable returns (uint256[] memory amounts, address reminderTokenAddress, uint256 reminder) {
-        amounts = IKayenRouter02(router).swapETHForExactTokens{value: msg.value}(
+        amounts = IFanXRouter02(router).swapETHForExactTokens{value: msg.value}(
             amountOut,
             path,
             address(this),
@@ -339,13 +339,13 @@ contract KayenMasterRouter is IKayenMasterRouter {
         uint256 balanceOut = IERC20(wrappedTokenOut).balanceOf(address(this));
         if (balanceOut == 0) return (reminderTokenAddress, reminder);
 
-        uint256 tokenOutOffset = IChilizWrappedERC20(wrappedTokenOut).getDecimalsOffset();
+        uint256 tokenOutOffset = IWrappedERC20(wrappedTokenOut).getDecimalsOffset();
         uint256 tokenOutReturnAmount = (balanceOut / tokenOutOffset) * tokenOutOffset;
 
         IERC20(wrappedTokenOut).approve(wrapperFactory, tokenOutReturnAmount); // no need for check return value, bc addliquidity will revert if approve was declined.
 
         if (tokenOutReturnAmount > 0) {
-            IChilizWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenOut, tokenOutReturnAmount);
+            IWrapperFactory(wrapperFactory).unwrap(to, wrappedTokenOut, tokenOutReturnAmount);
         }
 
         // transfer dust as wrapped token
@@ -358,6 +358,6 @@ contract KayenMasterRouter is IKayenMasterRouter {
 
     function _approveAndWrap(address token, uint256 amount) private returns (address wrappedToken) {
         IERC20(token).approve(wrapperFactory, amount); // no need for check return value, bc addliquidity will revert if approve was declined.
-        wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
+        wrappedToken = IWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
     }
 }

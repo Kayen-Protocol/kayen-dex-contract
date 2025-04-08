@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {IERC20} from "../interfaces/IERC20.sol";
-import {IChilizWrappedERC20} from "../interfaces/IChilizWrappedERC20.sol";
+import {IWrappedERC20} from "../interfaces/IWrappedERC20.sol";
 import {ERC20} from "../libraries/ERC20.sol";
 import {SafeERC20} from "../libraries/SafeERC20.sol";
 
-contract ChilizWrappedERC20 is ERC20, IChilizWrappedERC20 {
+contract WrappedERC20 is ERC20, IWrappedERC20 {
     address public factory;
     IERC20 private underlyingToken;
     uint256 private decimalsOffset;
@@ -23,7 +23,7 @@ contract ChilizWrappedERC20 is ERC20, IChilizWrappedERC20 {
         underlyingToken = _underlyingToken;
         decimalsOffset = 10 ** (18 - _underlyingToken.decimals());
         name = string(abi.encodePacked("Wrapped ", _underlyingToken.name()));
-        symbol = string(abi.encodePacked("W", _underlyingToken.symbol()));
+        symbol = string(abi.encodePacked("w", _underlyingToken.symbol()));
     }
 
     function underlying() public view returns (IERC20) {

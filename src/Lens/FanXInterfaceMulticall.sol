@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/// @notice A fork of Multicall2 specifically tailored for the Uniswap Interface
-contract UniswapInterfaceMulticall {
+/// @notice A fork of Multicall2 specifically tailored for the FanX Interface
+contract FanXInterfaceMulticall {
     struct Call {
         address target;
         uint256 gasLimit;

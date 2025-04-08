@@ -3,7 +3,7 @@ import {IERC20} from "./IERC20.sol";
 
 pragma solidity ^0.8.0;
 
-interface IChilizWrappedERC20 {
+interface IWrappedERC20 {
     error CannotDeposit();
     error InvalidDecimals();
     error CannotWithdraw();

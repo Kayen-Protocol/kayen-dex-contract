@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "../interfaces/IChilizWrappedERC20.sol";
-import "../interfaces/IChilizWrapperFactory.sol";
-import "../interfaces/IKayenFactory.sol";
-import "../libraries/KayenLibrary.sol";
+import "../interfaces/IWrappedERC20.sol";
+import "../interfaces/IWrapperFactory.sol";
+import "../interfaces/IFanXFactory.sol";
+import "../libraries/FanXLibrary.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract KayenLensV2 is Initializable {
+contract FanXLensV2 is Initializable {
     address public factory;
     address public wrapperFactory;
     address public WETH;
@@ -26,21 +26,21 @@ contract KayenLensV2 is Initializable {
 
     function quote(uint256 amountA, address tokenA, address tokenB) public view returns (uint256 amountB) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return KayenLibrary.quote(amountA, reserveIn, reserveOut);
+        return FanXLibrary.quote(amountA, reserveIn, reserveOut);
     }
 
     function getAmountIn(uint256 amountOut, address tokenA, address tokenB) public view returns (uint256 amountIn) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return KayenLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return FanXLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountOut(uint256 amountIn, address tokenA, address tokenB) public view returns (uint256 amountOut) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        return KayenLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return FanXLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     // function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts) {
-    //     return KayenLibrary.getAmountsOut(factory, amountIn, path);
+    //     return FanXLibrary.getAmountsOut(factory, amountIn, path);
     // }
 
     function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint256[] memory amounts) {
@@ -49,7 +49,7 @@ contract KayenLensV2 is Initializable {
         amounts[0] = amountIn;
         for (uint256 i; i < path.length - 1; i++) {
             (uint256 reserveIn, uint256 reserveOut) = getReserves(path[i], path[i + 1]);
-            amounts[i + 1] = KayenLibrary.getAmountOut(amounts[i], reserveIn, reserveOut);
+            amounts[i + 1] = FanXLibrary.getAmountOut(amounts[i], reserveIn, reserveOut);
         }
     }
 
@@ -57,7 +57,7 @@ contract KayenLensV2 is Initializable {
         uint256 amountIn,
         address[] memory path
     ) public view returns (uint256[] memory amounts, uint256 unwrappedAmount, uint256 reminder) {
-        uint256 tokenAOutOffset = IChilizWrappedERC20(path[0]).getDecimalsOffset();
+        uint256 tokenAOutOffset = IWrappedERC20(path[0]).getDecimalsOffset();
         amounts = getAmountsOut(amountIn * tokenAOutOffset, path);
         address tokenOut = path[path.length - 1];
         (unwrappedAmount, reminder) = _getReminder(tokenOut, amounts[amounts.length - 1]);
@@ -69,8 +69,8 @@ contract KayenLensV2 is Initializable {
         address tokenB
     ) public view returns (uint256 amountOut, uint256 unwrappedAmount, uint256 reminder) {
         (uint256 reserveIn, uint256 reserveOut) = getReserves(tokenA, tokenB);
-        uint256 tokenAOutOffset = IChilizWrappedERC20(tokenA).getDecimalsOffset();
-        amountOut = KayenLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
+        uint256 tokenAOutOffset = IWrappedERC20(tokenA).getDecimalsOffset();
+        amountOut = FanXLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         (unwrappedAmount, reminder) = _getReminder(tokenB, amountOut);
     }
 
@@ -84,14 +84,14 @@ contract KayenLensV2 is Initializable {
         uint256 tokenAOutOffset = 1;
 
         if (tokenA != WETH) {
-            wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
-            tokenAOutOffset = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+            wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(tokenA);
+            tokenAOutOffset = IWrappedERC20(wrappedTokenA).getDecimalsOffset();
         } else {
             wrappedTokenA = WETH;
         }
 
         if (tokenB != WETH) {
-            wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
+            wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(tokenB);
         } else {
             wrappedTokenB = WETH;
         }
@@ -100,28 +100,28 @@ contract KayenLensV2 is Initializable {
 
         (uint256 reserveIn, uint256 reserveOut) = getReserves(wrappedTokenA, wrappedTokenB);
 
-        amountOut = KayenLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
+        amountOut = FanXLibrary.getAmountOut(amountIn * tokenAOutOffset, reserveIn, reserveOut);
         if (tokenB != WETH) {
             (unwrappedAmount, reminder) = _getReminder(wrappedTokenB, amountOut);
         }
     }
 
     function getReserves(address tokenA, address tokenB) public view returns (uint256 reserveA, uint256 reserveB) {
-        (address token0, ) = KayenLibrary.sortTokens(tokenA, tokenB);
-        address pair = IKayenFactory(factory).getPair(tokenA, tokenB);
-        (uint256 reserve0, uint256 reserve1, ) = IKayenPair(pair).getReserves();
+        (address token0, ) = FanXLibrary.sortTokens(tokenA, tokenB);
+        address pair = IFanXFactory(factory).getPair(tokenA, tokenB);
+        (uint256 reserve0, uint256 reserve1, ) = IFanXPair(pair).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
     function getPairInAdvance(address tokenA, address tokenB) public view returns (address) {
-        return KayenLibrary.pairFor(factory, tokenA, tokenB);
+        return FanXLibrary.pairFor(factory, tokenA, tokenB);
     }
 
     function _getReminder(
         address tokenOut,
         uint256 amount
     ) internal view returns (uint256 unwrappedAmount, uint256 reminder) {
-        uint256 tokenOutOffset = IChilizWrappedERC20(tokenOut).getDecimalsOffset();
+        uint256 tokenOutOffset = IWrappedERC20(tokenOut).getDecimalsOffset();
         unwrappedAmount = (amount / tokenOutOffset);
         reminder = amount - (unwrappedAmount * tokenOutOffset);
     }

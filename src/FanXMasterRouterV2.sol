@@ -2,22 +2,22 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IKayenMasterRouterV2.sol";
-import "./interfaces/IChilizWrapperFactory.sol";
-import "./interfaces/IChilizWrappedERC20.sol";
+import "./interfaces/IFanXMasterRouterV2.sol";
+import "./interfaces/IWrapperFactory.sol";
+import "./interfaces/IWrappedERC20.sol";
 import "./interfaces/IWETH.sol";
-import "./libraries/KayenLibrary.sol";
+import "./libraries/FanXLibrary.sol";
 import "./libraries/TransferHelper.sol";
 import "./libraries/SafeERC20.sol";
 
-/// @title KayenMasterRouterV2
-/// @notice This contract provides advanced routing capabilities for the Kayen decentralized exchange
-/// @dev Implements the IKayenMasterRouterV2 interface
+/// @title FanXMasterRouterV2
+/// @notice This contract provides advanced routing capabilities for the FanX decentralized exchange
+/// @dev Implements the IFanXMasterRouterV2 interface
 /// @dev Handles token wrapping, liquidity provision, and swaps with support for both wrapped and unwrapped tokens
-contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
+contract FanXMasterRouterV2 is IFanXMasterRouterV2 {
     // using SafeERC20 for IERC20;
 
-    /// @notice Address of the Kayen factory contract
+    /// @notice Address of the FanX factory contract
     /// @dev This is immutable and set in the constructor
     address public immutable factory;
 
@@ -31,7 +31,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
 
     /// @notice Initializes the contract with factory, wrapper factory, and WETH addresses
     /// @dev Sets the immutable state variables
-    /// @param _factory Address of the Kayen factory contract
+    /// @param _factory Address of the FanX factory contract
     /// @param _wrapperFactory Address of the Chiliz wrapper factory contract
     /// @param _WETH Address of the Wrapped Ether (WETH) contract
     /// @custom:security Non-zero address check is performed to prevent accidental zero address initialization
@@ -58,7 +58,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         require(msg.sender == WETH, "MV2: ETH_UNACCEPTABLE");
     }
 
-    /// @notice Wraps tokens if necessary and adds liquidity to a Kayen pool
+    /// @notice Wraps tokens if necessary and adds liquidity to a FanX pool
     /// @param tokenA Address of the first token in the pair
     /// @param tokenB Address of the second token in the pair
     /// @param amountADesired The amount of tokenA to add as liquidity if the B/A price is <= amountBDesired/amountADesired (A depreciates)
@@ -109,16 +109,16 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             amountBMin
         );
 
-        address pair = KayenLibrary.pairFor(factory, adjustedTokenA, adjustedTokenB);
+        address pair = FanXLibrary.pairFor(factory, adjustedTokenA, adjustedTokenB);
         TransferHelper.safeTransfer(adjustedTokenA, pair, amountA);
         TransferHelper.safeTransfer(adjustedTokenB, pair, amountB);
-        liquidity = IKayenPair(pair).mint(to);
+        liquidity = IFanXPair(pair).mint(to);
 
         _returnUnwrappedTokenAndDust(adjustedTokenA, msg.sender, wrapTokenA, decimalsOffsetA);
         _returnUnwrappedTokenAndDust(adjustedTokenB, msg.sender, wrapTokenB, decimalsOffsetB);
     }
 
-    /// @notice Wraps tokens if necessary and adds liquidity to a Kayen pool with ETH
+    /// @notice Wraps tokens if necessary and adds liquidity to a FanX pool with ETH
     /// @param token Address of the token to be paired with ETH
     /// @param amountTokenDesired The amount of token to add as liquidity if the ETH/token price is <= msg.value/amountTokenDesired (token depreciates)
     /// @param amountTokenMin Minimum amount of token to add as liquidity. For unwrapped/wrapped tokens, this should be in terms of the wrapped token amount. For other tokens, it should be in terms of the token itself.
@@ -163,12 +163,12 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             amountTokenMin,
             amountETHMin
         );
-        address pair = KayenLibrary.pairFor(factory, adjustedToken, WETH);
+        address pair = FanXLibrary.pairFor(factory, adjustedToken, WETH);
         TransferHelper.safeTransfer(adjustedToken, pair, amountToken);
 
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IKayenPair(pair).mint(to);
+        liquidity = IFanXPair(pair).mint(to);
 
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
         _returnUnwrappedTokenAndDust(adjustedToken, msg.sender, wrapToken, decimalsOffset);
@@ -200,10 +200,10 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
         // must put wrapped address for tokenA and tokenB. Wrapped token or just regular token address.
 
-        address underlyingA = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA);
-        address underlyingB = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB);
-        uint256 decimalsOffsetA = underlyingA == address(0) ? 0 : IChilizWrappedERC20(tokenA).getDecimalsOffset();
-        uint256 decimalsOffsetB = underlyingB == address(0) ? 0 : IChilizWrappedERC20(tokenB).getDecimalsOffset();
+        address underlyingA = IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenA);
+        address underlyingB = IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenB);
+        uint256 decimalsOffsetA = underlyingA == address(0) ? 0 : IWrappedERC20(tokenA).getDecimalsOffset();
+        uint256 decimalsOffsetB = underlyingB == address(0) ? 0 : IWrappedERC20(tokenB).getDecimalsOffset();
 
         (uint256 amount0, uint256 amount1) = _removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin);
 
@@ -233,8 +233,8 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
-        address underlying = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(token);
-        uint256 decimalsOffset = underlying == address(0) ? 0 : IChilizWrappedERC20(token).getDecimalsOffset();
+        address underlying = IWrapperFactory(wrapperFactory).wrappedToUnderlying(token);
+        uint256 decimalsOffset = underlying == address(0) ? 0 : IWrappedERC20(token).getDecimalsOffset();
 
         (amountToken, amountETH) = _removeLiquidity(token, WETH, liquidity, amountTokenMin, amountETHMin);
 
@@ -247,13 +247,13 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         require(amounts.length == path.length, "Amounts and path length mismatch");
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = KayenLibrary.sortTokens(input, output);
+            (address token0, ) = FanXLibrary.sortTokens(input, output);
             uint256 amountOut = amounts[i + 1];
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOut)
                 : (amountOut, uint256(0));
-            address to = i < path.length - 2 ? KayenLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IKayenPair(KayenLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
+            address to = i < path.length - 2 ? FanXLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IFanXPair(FanXLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
 
@@ -279,36 +279,36 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
         address tokenIn = path[0];
         address unwrappedTokenIn = !isTokenInWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            ? IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
             : address(0);
 
         if (unwrappedTokenIn != address(0)) {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
             (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, amountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
-            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
+            TransferHelper.safeTransfer(tokenIn, FanXLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
             TransferHelper.safeTransferFrom(
                 tokenIn,
                 msg.sender,
-                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                FanXLibrary.pairFor(factory, tokenIn, path[1]),
                 amountIn
             );
         }
 
-        amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
+        amounts = FanXLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert FanXLibrary.InsufficientOutputAmount();
         _swap(amounts, path, address(this));
 
         address tokenOut = path[path.length - 1];
         bool isWrapped = receiveUnwrappedToken &&
-            IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
+            IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
 
         _returnUnwrappedTokenAndDust(
             tokenOut,
             to,
             isWrapped,
-            isWrapped ? IChilizWrappedERC20(tokenOut).getDecimalsOffset() : 0
+            isWrapped ? IWrappedERC20(tokenOut).getDecimalsOffset() : 0
         );
     }
 
@@ -331,25 +331,25 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
+        amounts = FanXLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         address tokenIn = path[0];
         uint256 amountIn = amounts[0];
         address unwrappedTokenIn = !isTokenInWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            ? IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
             : address(0);
 
         if (unwrappedTokenIn != address(0)) {
-            uint256 unwrappedAmountIn = amountIn / IChilizWrappedERC20(path[0]).getDecimalsOffset() + 1;
+            uint256 unwrappedAmountIn = amountIn / IWrappedERC20(path[0]).getDecimalsOffset() + 1;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
             (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, true);
             require(tokenIn == path[0] && amountIn > amounts[0], "MV2: INVALID_AMOUNTIN");
-            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
+            TransferHelper.safeTransfer(tokenIn, FanXLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
             TransferHelper.safeTransferFrom(
                 tokenIn,
                 msg.sender,
-                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                FanXLibrary.pairFor(factory, tokenIn, path[1]),
                 amountIn
             );
         }
@@ -361,12 +361,12 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         }
         if (receiveUnwrappedToken) {
             address tokenOut = path[path.length - 1];
-            bool isWrapped = IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
+            bool isWrapped = IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
             _returnUnwrappedTokenAndDust(
                 tokenOut,
                 to,
                 isWrapped,
-                isWrapped ? IChilizWrappedERC20(tokenOut).getDecimalsOffset() : 0
+                isWrapped ? IWrappedERC20(tokenOut).getDecimalsOffset() : 0
             );
         }
     }
@@ -386,22 +386,22 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert KayenLibrary.InvalidPath();
-        amounts = KayenLibrary.getAmountsOut(factory, msg.value, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
+        if (path[0] != WETH) revert FanXLibrary.InvalidPath();
+        amounts = FanXLibrary.getAmountsOut(factory, msg.value, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert FanXLibrary.InsufficientOutputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(FanXLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, address(this));
 
         address tokenOut = path[path.length - 1];
         bool isWrapped = receiveUnwrappedToken &&
-            IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
+            IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
 
         _returnUnwrappedTokenAndDust(
             tokenOut,
             to,
             isWrapped,
-            isWrapped ? IChilizWrappedERC20(tokenOut).getDecimalsOffset() : 0
+            isWrapped ? IWrappedERC20(tokenOut).getDecimalsOffset() : 0
         );
     }
 
@@ -423,29 +423,29 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
-        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[path.length - 1] != WETH) revert FanXLibrary.InvalidPath();
+        amounts = FanXLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
         address tokenIn = path[0];
         uint256 amountIn = amounts[0];
         address unwrappedTokenIn = !isTokenInWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            ? IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
             : address(0);
 
         if (unwrappedTokenIn != address(0)) {
-            uint256 decimalsOffset = IChilizWrappedERC20(tokenIn).getDecimalsOffset();
+            uint256 decimalsOffset = IWrappedERC20(tokenIn).getDecimalsOffset();
             uint256 unwrappedAmountIn = (amountIn + decimalsOffset - 1) / decimalsOffset;
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), unwrappedAmountIn);
             (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, unwrappedAmountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
             require(amountIn >= amounts[0], "MV2: INVALID_AMOUNTIN");
 
-            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
+            TransferHelper.safeTransfer(tokenIn, FanXLibrary.pairFor(factory, tokenIn, path[1]), amounts[0]);
         } else {
             TransferHelper.safeTransferFrom(
                 tokenIn,
                 msg.sender,
-                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                FanXLibrary.pairFor(factory, tokenIn, path[1]),
                 amountIn
             );
         }
@@ -477,7 +477,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     ) external virtual ensure(deadline) returns (uint256[] memory amounts) {
         address tokenIn = path[0];
         address unwrappedTokenIn = !isTokenInWrapped
-            ? IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
+            ? IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenIn)
             : address(0);
 
         // if tokenIn is unwrapped
@@ -485,20 +485,20 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             TransferHelper.safeTransferFrom(unwrappedTokenIn, msg.sender, address(this), amountIn);
             (tokenIn, amountIn, ) = _adjustToken(unwrappedTokenIn, amountIn, true);
             require(tokenIn == path[0], "MV2: WRONG_PATH");
-            TransferHelper.safeTransfer(tokenIn, KayenLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
+            TransferHelper.safeTransfer(tokenIn, FanXLibrary.pairFor(factory, tokenIn, path[1]), amountIn);
         } else {
             TransferHelper.safeTransferFrom(
                 tokenIn,
                 msg.sender,
-                KayenLibrary.pairFor(factory, tokenIn, path[1]),
+                FanXLibrary.pairFor(factory, tokenIn, path[1]),
                 amountIn
             );
         }
 
-        if (path[path.length - 1] != WETH) revert KayenLibrary.InvalidPath();
-        amounts = KayenLibrary.getAmountsOut(factory, amountIn, path);
-        if (amounts[amounts.length - 1] < amountOutMin) revert KayenLibrary.InsufficientOutputAmount();
-        // TransferHelper.safeTransfer(path[0], KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]);
+        if (path[path.length - 1] != WETH) revert FanXLibrary.InvalidPath();
+        amounts = FanXLibrary.getAmountsOut(factory, amountIn, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert FanXLibrary.InsufficientOutputAmount();
+        // TransferHelper.safeTransfer(path[0], FanXLibrary.pairFor(factory, path[0], path[1]), amounts[0]);
 
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -520,24 +520,24 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        if (path[0] != WETH) revert KayenLibrary.InvalidPath();
-        amounts = KayenLibrary.getAmountsIn(factory, amountOut, path);
+        if (path[0] != WETH) revert FanXLibrary.InvalidPath();
+        amounts = FanXLibrary.getAmountsIn(factory, amountOut, path);
         if (amounts[0] > msg.value) revert ExcessiveInputAmount();
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(KayenLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(FanXLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, address(this));
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
 
         address tokenOut = path[path.length - 1];
         bool isWrapped = receiveUnwrappedToken &&
-            IChilizWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
+            IWrapperFactory(wrapperFactory).wrappedToUnderlying(tokenOut) != address(0);
 
         _returnUnwrappedTokenAndDust(
             tokenOut,
             to,
             isWrapped,
-            isWrapped ? IChilizWrappedERC20(tokenOut).getDecimalsOffset() : 0
+            isWrapped ? IWrappedERC20(tokenOut).getDecimalsOffset() : 0
         );
     }
 
@@ -572,7 +572,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             // Approve the maximum possible amount
             SafeERC20.safeApprove(IERC20(token), wrapperFactory, type(uint256).max);
         }
-        wrappedToken = IChilizWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
+        wrappedToken = IWrapperFactory(wrapperFactory).wrap(address(this), token, amount);
     }
 
     function _approveAndUnwrap(address token, uint256 amount, address to) private {
@@ -581,7 +581,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
             // Approve the maximum possible amount
             SafeERC20.safeApprove(IERC20(token), wrapperFactory, type(uint256).max);
         }
-        IChilizWrapperFactory(wrapperFactory).unwrap(to, token, amount);
+        IWrapperFactory(wrapperFactory).unwrap(to, token, amount);
     }
 
     function _validateTokens(address tokenA, address tokenB, bool wrapTokenA, bool wrapTokenB) internal view {
@@ -597,7 +597,7 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
     ) private returns (address adjustedToken, uint256 adjustedAmountDesired, uint256 decimalsOffset) {
         if (wrap) {
             adjustedToken = _approveAndWrap(token, amountDesired);
-            decimalsOffset = IChilizWrappedERC20(adjustedToken).getDecimalsOffset();
+            decimalsOffset = IWrappedERC20(adjustedToken).getDecimalsOffset();
             adjustedAmountDesired = amountDesired * decimalsOffset;
         } else {
             adjustedToken = token;
@@ -614,19 +614,19 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 amountBMin
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
         // create the pair if it doesn't exist yet
-        if (IKayenFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IKayenFactory(factory).createPair(tokenA, tokenB);
+        if (IFanXFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IFanXFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint256 reserveA, uint256 reserveB) = KayenLibrary.getReserves(factory, tokenA, tokenB);
+        (uint256 reserveA, uint256 reserveB) = FanXLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = KayenLibrary.quote(amountADesired, reserveA, reserveB);
+            uint256 amountBOptimal = FanXLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 if (amountBOptimal < amountBMin) revert InsufficientBAmount();
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = KayenLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint256 amountAOptimal = FanXLibrary.quote(amountBDesired, reserveB, reserveA);
                 if (amountAOptimal > amountADesired) revert ExcessiveInputAmount();
                 if (amountAOptimal < amountAMin) revert InsufficientAAmount();
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
@@ -641,10 +641,10 @@ contract KayenMasterRouterV2 is IKayenMasterRouterV2 {
         uint256 amountAMin,
         uint256 amountBMin
     ) internal returns (uint256 amountA, uint256 amountB) {
-        address pair = KayenLibrary.pairFor(factory, tokenA, tokenB);
-        IKayenPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = IKayenPair(pair).burn(address(this));
-        (address token0, ) = KayenLibrary.sortTokens(tokenA, tokenB);
+        address pair = FanXLibrary.pairFor(factory, tokenA, tokenB);
+        IFanXPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint256 amount0, uint256 amount1) = IFanXPair(pair).burn(address(this));
+        (address token0, ) = FanXLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         if (amountA < amountAMin) revert InsufficientAAmount();
         if (amountB < amountBMin) revert InsufficientBAmount();

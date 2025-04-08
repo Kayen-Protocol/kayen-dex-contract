@@ -3,26 +3,26 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/KayenFactory.sol";
-import "../../src/KayenPair.sol";
-import "../../src/KayenRouter02.sol";
-import "../../src/interfaces/IKayenRouter02.sol";
+import "../../src/FanXFactory.sol";
+import "../../src/FanXPair.sol";
+import "../../src/FanXRouter02.sol";
+import "../../src/interfaces/IFanXRouter02.sol";
 import "../../src/mocks/ERC20Mintable_decimal.sol";
 import "../../src/mocks/MockWETH.sol";
-import "../../src/KayenMasterRouterV2.sol";
-import "../../src/utils/ChilizWrapperFactory.sol";
-import "../../src/interfaces/IChilizWrapperFactory.sol";
-import "../../src/libraries/KayenLibrary.sol";
+import "../../src/FanXMasterRouterV2.sol";
+import "../../src/utils/WrapperFactory.sol";
+import "../../src/interfaces/IWrapperFactory.sol";
+import "../../src/libraries/FanXLibrary.sol";
 import "../../src/libraries/Math.sol";
 
-contract KayenMasterRouterRemoveLiquidity_Test is Test {
+contract FanXMasterRouterRemoveLiquidity_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    KayenRouter02 public router;
-    KayenMasterRouterV2 public masterRouterV2;
-    KayenFactory public factory;
-    IChilizWrapperFactory public wrapperFactory;
+    FanXRouter02 public router;
+    FanXMasterRouterV2 public masterRouterV2;
+    FanXFactory public factory;
+    IWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA_D0;
     ERC20Mintable public tokenB_D0;
@@ -40,10 +40,10 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
-        wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
+        wrapperFactory = new WrapperFactory();
+        masterRouterV2 = new FanXMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);
@@ -120,7 +120,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         address pairAddress = factory.getPair(wrappedTokenA, address(tokenA_D6));
 
         // Approve liquidity tokens for removal
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
         // Check if the user received the correct amount of tokens
         uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
@@ -160,7 +160,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         );
 
         // For wrapped tokens, we need to consider the decimal offset
-        uint256 decimalsOffsetA = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0)))
+        uint256 decimalsOffsetA = IWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0)))
             .getDecimalsOffset();
 
         // Check unwrapped token A balance
@@ -214,7 +214,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         address pairAddress = factory.getPair(wrappedTokenA, address(tokenA_D6));
 
         // Approve liquidity tokens for removal
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
         // Check if the user received the correct amount of tokens
         uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
@@ -223,7 +223,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Remove 50% of liquidity
         uint256 liquidityToRemove = liquidity / 2;
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
 
         (uint256 removedAmountA, uint256 removedAmountB) = masterRouterV2.removeLiquidityAndUnwrapToken(
             wrappedTokenA,
@@ -239,13 +239,13 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Check remaining liquidity
         assertEq(
-            KayenPair(pairAddress).totalSupply(),
+            FanXPair(pairAddress).totalSupply(),
             liquidity + 1000 - liquidityToRemove,
             "Incorrect remaining liquidity"
         );
 
         // For wrapped tokens, we need to consider the decimal offset
-        uint256 decimalsOffsetA = IChilizWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0)))
+        uint256 decimalsOffsetA = IWrappedERC20(wrapperFactory.wrappedTokenFor(address(tokenA_D0)))
             .getDecimalsOffset();
 
         // Check unwrapped token A balance
@@ -312,11 +312,11 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         address pairAddress = factory.getPair(wrappedTokenA, address(tokenB_D18));
 
         // Check initial pool liquidity
-        assertEq(KayenPair(pairAddress).totalSupply(), liquidity + 1000, "Initial liquidity mismatch");
+        assertEq(FanXPair(pairAddress).totalSupply(), liquidity + 1000, "Initial liquidity mismatch");
 
         // Remove 50% of liquidity
         uint256 liquidityToRemove = liquidity / 2;
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidityToRemove);
 
         uint256 tokenA_D0_BalanceBefore = tokenA_D0.balanceOf(address(this));
         uint256 tokenB_D18_BalanceBefore = tokenB_D18.balanceOf(address(this));
@@ -336,13 +336,13 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Check remaining liquidity
         assertEq(
-            KayenPair(pairAddress).totalSupply(),
+            FanXPair(pairAddress).totalSupply(),
             liquidity + 1000 - liquidityToRemove,
             "Incorrect remaining liquidity"
         );
 
         // For wrapped tokens, we need to consider the decimal offset
-        uint256 decimalsOffsetA = IChilizWrappedERC20(wrappedTokenA).getDecimalsOffset();
+        uint256 decimalsOffsetA = IWrappedERC20(wrappedTokenA).getDecimalsOffset();
 
         // Check unwrapped token A balance
         assertEq(
@@ -401,7 +401,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         address pairAddress = factory.getPair(wrappedToken, address(WETH));
 
         // Approve liquidity tokens for removal
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
         // Calculate minimum amounts with 0.5% slippage
         uint256 amountTokenMin = (amountToken * 990) / 1000;
@@ -453,7 +453,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         );
 
         // For wrapped tokens, we need to consider the decimal offset
-        uint256 decimalsOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
+        uint256 decimalsOffset = IWrappedERC20(wrappedToken).getDecimalsOffset();
 
         // Check unwrapped token balance
         assertEq(
@@ -498,7 +498,7 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
         address pairAddress = factory.getPair(wrappedToken, address(WETH));
 
         // Approve liquidity tokens for removal
-        KayenPair(pairAddress).approve(address(masterRouterV2), liquidity);
+        FanXPair(pairAddress).approve(address(masterRouterV2), liquidity);
 
         // Remove 50% of liquidity
         uint256 liquidityToRemove = liquidity / 2;
@@ -524,13 +524,13 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
 
         // Check remaining liquidity
         assertEq(
-            KayenPair(pairAddress).totalSupply(),
+            FanXPair(pairAddress).totalSupply(),
             liquidity + 1000 - liquidityToRemove,
             "Incorrect remaining liquidity"
         );
 
         // For wrapped tokens, we need to consider the decimal offset
-        uint256 decimalsOffset = IChilizWrappedERC20(wrappedToken).getDecimalsOffset();
+        uint256 decimalsOffset = IWrappedERC20(wrappedToken).getDecimalsOffset();
 
         // Check unwrapped token balance
         assertEq(
@@ -588,4 +588,4 @@ contract KayenMasterRouterRemoveLiquidity_Test is Test {
     }
 }
 
-// forge test --match-path test/KayenMasterRouterV2/KayenMasterRouterV2_removeliquidity.t.sol -vvvv
+// forge test --match-path test/FanXMasterRouterV2/FanXMasterRouterV2_removeliquidity.t.sol -vvvv

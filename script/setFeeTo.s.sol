@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {KayenFactory} from "../src/KayenFactory.sol";
+import {FanXFactory} from "../src/FanXFactory.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production
 contract setFeeTo is Script {
@@ -13,10 +13,10 @@ contract setFeeTo is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        KayenFactory(T_facoty).setFeeTo(setFeeTo);
-        // KayenFactory(factory).setFeeToSetter(0x80B714e2dd42611e4DeA6BFe2633210bD9191bEd);
+        FanXFactory(T_facoty).setFeeTo(setFeeTo);
+        // FanXFactory(factory).setFeeToSetter(0x80B714e2dd42611e4DeA6BFe2633210bD9191bEd);
 
-        address setFeeTo_ = KayenFactory(T_facoty).feeTo();
+        address setFeeTo_ = FanXFactory(T_facoty).feeTo();
         console2.log(setFeeTo_);
         vm.stopBroadcast();
     }

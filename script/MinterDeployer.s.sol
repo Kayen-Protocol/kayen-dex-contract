@@ -129,20 +129,3 @@ contract MinterDeployer is Script {
         vm.stopBroadcast();
     }
 }
-/**
-CHILIZ Mainnet
-    ROUTER_V2: '0x377d5e70c8fb649D7e2DbdaCCBefa1858EF4f973'
-    PAIR_FACTORY: '0x7ef878CED132a7c3e3a56751DF3F7fD0F5AA0575'
-    WRAPPER_FACTORY: '0x2066c5860F3ebE19Fa51544a54C40D6a8f5B965f'
-    WETH: '0x677F7e16C7Dd57be1D4C8aD1244883214953DC47'
-  
-CHILIZ TESTNET
-    KayenFactory:  0x67C97f71D1cdC17C4cf1255FC6aa429499006ec8
-    KayenRouter02:  0x36133741a3580bd270783f566797Ef837daAA9A0
-    wrapperFactory:  0xa649bB40Da4361436A806BD55765770082Ac262b
-    MasterRouter:  0x9df661c2eae08E6341036d44f4bc49262eCff2CE
-    WETH: '0x678c34581db0a7808d0aC669d7025f1408C9a3C6'
-*/
-
-// forge script scripts/MinterDeployer.s.sol:MinterDeployer --rpc-url $SPICY_TESTNET --broadcast --legacy --optimizer-runs 20000
-// forge script scripts/Deployments.s.sol:Deployments --rpc-url $CHILIZ_MAINNET --broadcast --legacy --optimizer-runs 20000

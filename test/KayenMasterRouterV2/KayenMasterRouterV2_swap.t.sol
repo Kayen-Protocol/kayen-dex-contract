@@ -3,26 +3,26 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/KayenFactory.sol";
-import "../../src/KayenPair.sol";
-import "../../src/KayenRouter02.sol";
-import "../../src/interfaces/IKayenRouter02.sol";
+import "../../src/FanXFactory.sol";
+import "../../src/FanXPair.sol";
+import "../../src/FanXRouter02.sol";
+import "../../src/interfaces/IFanXRouter02.sol";
 import "../../src/mocks/ERC20Mintable_decimal.sol";
 import "../../src/mocks/MockWETH.sol";
-import "../../src/KayenMasterRouterV2.sol";
-import "../../src/utils/ChilizWrapperFactory.sol";
-import "../../src/interfaces/IChilizWrapperFactory.sol";
-import "../../src/libraries/KayenLibrary.sol";
+import "../../src/FanXMasterRouterV2.sol";
+import "../../src/utils/WrapperFactory.sol";
+import "../../src/interfaces/IWrapperFactory.sol";
+import "../../src/libraries/FanXLibrary.sol";
 import "../../src/libraries/Math.sol";
 
-contract KayenMasterRouterSwap_Test is Test {
+contract FanXMasterRouterSwap_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    KayenRouter02 public router;
-    KayenMasterRouterV2 public masterRouterV2;
-    KayenFactory public factory;
-    IChilizWrapperFactory public wrapperFactory;
+    FanXRouter02 public router;
+    FanXMasterRouterV2 public masterRouterV2;
+    FanXFactory public factory;
+    IWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA_D0;
     ERC20Mintable public tokenB_D0;
@@ -40,10 +40,10 @@ contract KayenMasterRouterSwap_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
-        wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
+        wrapperFactory = new WrapperFactory();
+        masterRouterV2 = new FanXMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);
@@ -93,8 +93,8 @@ contract KayenMasterRouterSwap_Test is Test {
      ***      swap       ***
      ***********************/
     function test_SwapExactTokensForTokens_D0_D0() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
-        address wrappedTokenB = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenB = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenB_D0));
 
         uint256 approvalAmount = 100;
         tokenA_D0.approve(address(masterRouterV2), approvalAmount);
@@ -114,7 +114,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         address pairAddress = factory.getPair(wrappedTokenA, wrappedTokenB);
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceA = tokenA_D0.balanceOf(user0);
         uint256 initialBalanceB = tokenB_D0.balanceOf(user0);
@@ -137,7 +137,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -157,7 +157,7 @@ contract KayenMasterRouterSwap_Test is Test {
     }
 
     function test_SwapExactTokensForTokens_D6_D0() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
 
         uint256 approvalAmount = 100;
         tokenA_D0.approve(address(masterRouterV2), approvalAmount);
@@ -177,7 +177,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         address pairAddress = factory.getPair(wrappedTokenA, address(tokenA_D6));
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceA = tokenA_D0.balanceOf(user0);
         uint256 initialBalanceB = tokenA_D6.balanceOf(user0);
@@ -200,7 +200,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -228,7 +228,7 @@ contract KayenMasterRouterSwap_Test is Test {
     }
 
     function test_SwapExactTokensForTokens_D0_D6() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
 
         uint256 approvalAmount = 100;
         tokenA_D0.approve(address(masterRouterV2), approvalAmount);
@@ -248,7 +248,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         address pairAddress = factory.getPair(wrappedTokenA, address(tokenA_D6));
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceA = tokenA_D0.balanceOf(user0);
         uint256 initialBalanceB = tokenA_D6.balanceOf(user0);
@@ -271,7 +271,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -307,7 +307,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA_D6), address(tokenA_D18));
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceA = tokenA_D6.balanceOf(user0);
         uint256 initialBalanceB = tokenA_D18.balanceOf(user0);
@@ -330,7 +330,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -364,7 +364,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         address pairAddress = factory.getPair(address(tokenA_D6), address(tokenA_D18));
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceA = tokenA_D18.balanceOf(user0);
         uint256 initialBalanceB = tokenA_D6.balanceOf(user0);
@@ -387,7 +387,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -403,7 +403,7 @@ contract KayenMasterRouterSwap_Test is Test {
     }
 
     function test_swapExactETHForTokens_ETH_D0_ReceiveUnwrapped() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
 
         // Add initial liquidity
         tokenA_D0.approve(address(masterRouterV2), 1000);
@@ -415,7 +415,7 @@ contract KayenMasterRouterSwap_Test is Test {
         (address token0, address token1) = wrappedTokenA < address(WETH)
             ? (wrappedTokenA, address(WETH))
             : (address(WETH), wrappedTokenA);
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceToken = tokenA_D0.balanceOf(user0);
         uint256 initialBalanceWrappedToken = IERC20(wrappedTokenA).balanceOf(user0);
@@ -436,7 +436,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -466,7 +466,7 @@ contract KayenMasterRouterSwap_Test is Test {
     }
 
     function test_swapExactETHForTokens_ETH_D0_ReceiveWrapped() public {
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
 
         // Add initial liquidity
         tokenA_D0.approve(address(masterRouterV2), 1000);
@@ -478,7 +478,7 @@ contract KayenMasterRouterSwap_Test is Test {
         (address token0, address token1) = wrappedTokenA < address(WETH)
             ? (wrappedTokenA, address(WETH))
             : (address(WETH), wrappedTokenA);
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceToken = tokenA_D0.balanceOf(user0);
         uint256 initialBalanceETH = user0.balance;
@@ -499,7 +499,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -537,7 +537,7 @@ contract KayenMasterRouterSwap_Test is Test {
         (address token0, address token1) = address(tokenA_D6) < address(WETH)
             ? (address(tokenA_D6), address(WETH))
             : (address(WETH), address(tokenA_D6));
-        (uint112 initialReserve0, uint112 initialReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 initialReserve0, uint112 initialReserve1, ) = FanXPair(pairAddress).getReserves();
 
         uint256 initialBalanceToken = tokenA_D6.balanceOf(user0);
         uint256 initialBalanceETH = user0.balance;
@@ -557,7 +557,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
         vm.stopPrank();
 
-        (uint112 finalReserve0, uint112 finalReserve1, ) = KayenPair(pairAddress).getReserves();
+        (uint112 finalReserve0, uint112 finalReserve1, ) = FanXPair(pairAddress).getReserves();
 
         // Assertions
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
@@ -587,7 +587,7 @@ contract KayenMasterRouterSwap_Test is Test {
 
         // 2. Prepare for swap
         address[] memory path = new address[](2);
-        path[0] = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        path[0] = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
         path[1] = address(WETH);
 
         uint256 swapAmount = 100000; // Amount of tokenA_D0 to swap
@@ -748,7 +748,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         // 2. swapTokensForExactTokens()
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
         address[] memory path = new address[](2);
         path[0] = wrappedTokenA;
         path[1] = address(tokenA_D6);
@@ -810,7 +810,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         // 2. swapTokensForExactTokens()
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
         address[] memory path = new address[](2);
         path[0] = address(tokenA_D6);
         path[1] = wrappedTokenA;
@@ -871,7 +871,7 @@ contract KayenMasterRouterSwap_Test is Test {
         );
 
         // 2. Prepare for swap
-        address wrappedTokenA = IChilizWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
+        address wrappedTokenA = IWrapperFactory(wrapperFactory).wrappedTokenFor(address(tokenA_D0));
         address[] memory path = new address[](2);
         path[0] = wrappedTokenA;
         path[1] = address(WETH);
@@ -993,7 +993,7 @@ contract KayenMasterRouterSwap_Test is Test {
         // 2. Prepare for swap
         address[] memory path = new address[](2);
         path[0] = address(WETH);
-        address wrappedTokenA_D0 = IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(address(tokenA_D0));
+        address wrappedTokenA_D0 = IWrapperFactory(wrapperFactory).underlyingToWrapped(address(tokenA_D0));
         path[1] = wrappedTokenA_D0;
 
         uint256 tokenOutAmount = 50e18 + 1; // 50 tokens with 0 decimals
@@ -1029,9 +1029,9 @@ contract KayenMasterRouterSwap_Test is Test {
         assertEq(finalEthBalance, initialEthBalance - amounts[0], "Incorrect final ETH balance");
 
         // Check that no wrapped tokens are left in the user's balance
-        wrappedTokenA_D0 = IChilizWrapperFactory(wrapperFactory).underlyingToWrapped(address(tokenA_D0));
+        wrappedTokenA_D0 = IWrapperFactory(wrapperFactory).underlyingToWrapped(address(tokenA_D0));
         assertEq(IERC20(wrappedTokenA_D0).balanceOf(user0), 1, "User should not have any wrapped tokens");
     }
 }
 
-// forge test --match-path test/KayenMasterRouterV2/KayenMasterRouterV2_swap.t.sol -vvvv
+// forge test --match-path test/FanXMasterRouterV2/FanXMasterRouterV2_swap.t.sol -vvvv

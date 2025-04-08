@@ -3,27 +3,27 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/KayenFactory.sol";
-import "../../src/KayenPair.sol";
-import "../../src/KayenRouter02.sol";
-import "../../src/interfaces/IKayenRouter02.sol";
+import "../../src/FanXFactory.sol";
+import "../../src/FanXPair.sol";
+import "../../src/FanXRouter02.sol";
+import "../../src/interfaces/IFanXRouter02.sol";
 import "../../src/mocks/ERC20Mintable_decimal.sol";
 import "../../src/mocks/MockWETH.sol";
-import "../../src/KayenMasterRouterV2.sol";
-import "../../src/utils/ChilizWrapperFactory.sol";
-import "../../src/interfaces/IChilizWrapperFactory.sol";
-import "../../src/libraries/KayenLibrary.sol";
+import "../../src/FanXMasterRouterV2.sol";
+import "../../src/utils/WrapperFactory.sol";
+import "../../src/interfaces/IWrapperFactory.sol";
+import "../../src/libraries/FanXLibrary.sol";
 import "../../src/libraries/Math.sol";
 
 // @add assertions
-contract KayenMasterRouter_Test is Test {
+contract FanXMasterRouter_Test is Test {
     address feeSetter = address(69);
     MockWETH public WETH;
 
-    KayenRouter02 public router;
-    KayenMasterRouterV2 public masterRouterV2;
-    KayenFactory public factory;
-    IChilizWrapperFactory public wrapperFactory;
+    FanXRouter02 public router;
+    FanXMasterRouterV2 public masterRouterV2;
+    FanXFactory public factory;
+    IWrapperFactory public wrapperFactory;
 
     ERC20Mintable public tokenA_D0;
     ERC20Mintable public tokenB_D0;
@@ -41,10 +41,10 @@ contract KayenMasterRouter_Test is Test {
     function setUp() public {
         WETH = new MockWETH();
 
-        factory = new KayenFactory(feeSetter);
-        router = new KayenRouter02(address(factory), address(WETH));
-        wrapperFactory = new ChilizWrapperFactory();
-        masterRouterV2 = new KayenMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
+        factory = new FanXFactory(feeSetter);
+        router = new FanXRouter02(address(factory), address(WETH));
+        wrapperFactory = new WrapperFactory();
+        masterRouterV2 = new FanXMasterRouterV2(address(factory), address(wrapperFactory), address(WETH));
 
         tokenA_D0 = new ERC20Mintable("Token A", "TKNA", 0);
         tokenB_D0 = new ERC20Mintable("Token B", "TKNB", 0);
@@ -120,4 +120,4 @@ contract KayenMasterRouter_Test is Test {
         vm.stopPrank();
     }
 }
-// forge test --match-path test/KayenMasterRouterV2/senarioTest.t.sol -vvvv
+// forge test --match-path test/FanXMasterRouterV2/senarioTest.t.sol -vvvv
