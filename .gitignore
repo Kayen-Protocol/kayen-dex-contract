@@ -5,7 +5,9 @@ coverage
 coverage.json
 typechain
 .DS_Store
-
+bin
+.wake
+lib
 # Hardhat files
 cache
 artifacts
