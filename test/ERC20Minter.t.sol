@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../contracts/mocks/ERC20Minter.sol";
-import "../contracts/mocks/ERC20MintableMinterWithdecimalForMinter.sol";
+import "../src/mocks/ERC20Minter.sol";
+import "../src/mocks/ERC20MintableMinterWithdecimalForMinter.sol";
 
 contract KayenMinter is Test {
     address[] tokens; // = new ERC20MintableMinter[](11);

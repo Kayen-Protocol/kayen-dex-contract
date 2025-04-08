@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {JalaMasterRouter} from "../contracts/JalaMasterRouter.sol";
-import {ChilizWrapperFactory} from "../contracts/utils/ChilizWrapperFactory.sol";
-import {JalaFactory} from "../contracts/JalaFactory.sol";
-import {JalaRouter02} from "../contracts/JalaRouter02.sol";
+import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
+import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
+import {KayenFactory} from "../src/KayenFactory.sol";
+import {KayenRouter02} from "../src/KayenRouter02.sol";
 
 contract Deployments is Script {
     function run() external {
@@ -14,20 +14,20 @@ contract Deployments is Script {
         address feeSetter = 0x86d36bd2EEfB7974B9D0720Af3418FC7Ca5C8897;
         address WETH = 0x678c34581db0a7808d0aC669d7025f1408C9a3C6;
 
-        JalaFactory factory = new JalaFactory(feeSetter);
+        KayenFactory factory = new KayenFactory(feeSetter);
 
-        JalaRouter02 router02 = new JalaRouter02(address(factory), WETH);
+        KayenRouter02 router02 = new KayenRouter02(address(factory), WETH);
         ChilizWrapperFactory wrapperFactory = new ChilizWrapperFactory();
 
-        JalaMasterRouter masterRouter = new JalaMasterRouter(
+        KayenMasterRouter masterRouter = new KayenMasterRouter(
             address(factory),
             address(wrapperFactory),
             address(router02),
             WETH
         );
 
-        console2.log("JalaFactory: ", address(factory));
-        console2.log("JalaRouter02: ", address(router02));
+        console2.log("KayenFactory: ", address(factory));
+        console2.log("KayenRouter02: ", address(router02));
         console2.log("wrapperFactory: ", address(wrapperFactory));
         console2.log("MasterRouter: ", address(masterRouter));
 

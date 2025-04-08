@@ -2,12 +2,12 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {JalaMasterRouter} from "../contracts/JalaMasterRouter.sol";
-import {ChilizWrapperFactory} from "../contracts/utils/ChilizWrapperFactory.sol";
-import {JalaFactory} from "../contracts/JalaFactory.sol";
-import {JalaRouter02} from "../contracts/JalaRouter02.sol";
-import {IERC20} from "../contracts/interfaces/IERC20.sol";
-import "../contracts/libraries/JalaLibrary.sol";
+import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
+import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
+import {KayenFactory} from "../src/KayenFactory.sol";
+import {KayenRouter02} from "../src/KayenRouter02.sol";
+import {IERC20} from "../src/interfaces/IERC20.sol";
+import "../src/libraries/KayenLibrary.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production
 contract wrapTokenAndaddLiquidityETH is Script {
@@ -26,7 +26,7 @@ contract wrapTokenAndaddLiquidityETH is Script {
 
         // IERC20(wrappedToken0).approve(router, 10e18);
         IERC20(token0).approve(masterRouter, 100);
-        JalaMasterRouter(masterRouter).wrapTokenAndaddLiquidityETH{value: 5e18}(
+        KayenMasterRouter(masterRouter).wrapTokenAndaddLiquidityETH{value: 5e18}(
             token0,
             100,
             0,

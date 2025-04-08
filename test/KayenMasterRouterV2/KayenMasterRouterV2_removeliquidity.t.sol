@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../contracts/KayenFactory.sol";
-import "../../contracts/KayenPair.sol";
-import "../../contracts/KayenRouter02.sol";
-import "../../contracts/interfaces/IKayenRouter02.sol";
-import "../../contracts/mocks/ERC20Mintable_decimal.sol";
-import "../../contracts/mocks/MockWETH.sol";
-import "../../contracts/KayenMasterRouterV2.sol";
-import "../../contracts/utils/ChilizWrapperFactory.sol";
-import "../../contracts/interfaces/IChilizWrapperFactory.sol";
-import "../../contracts/libraries/KayenLibrary.sol";
-import "../../contracts/libraries/Math.sol";
+import "../../src/KayenFactory.sol";
+import "../../src/KayenPair.sol";
+import "../../src/KayenRouter02.sol";
+import "../../src/interfaces/IKayenRouter02.sol";
+import "../../src/mocks/ERC20Mintable_decimal.sol";
+import "../../src/mocks/MockWETH.sol";
+import "../../src/KayenMasterRouterV2.sol";
+import "../../src/utils/ChilizWrapperFactory.sol";
+import "../../src/interfaces/IChilizWrapperFactory.sol";
+import "../../src/libraries/KayenLibrary.sol";
+import "../../src/libraries/Math.sol";
 
 contract KayenMasterRouterRemoveLiquidity_Test is Test {
     address feeSetter = address(69);

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {JalaMasterRouter} from "../contracts/JalaMasterRouter.sol";
-import {ChilizWrapperFactory} from "../contracts/utils/ChilizWrapperFactory.sol";
-import {JalaFactory} from "../contracts/JalaFactory.sol";
+import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
+import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
+import {KayenFactory} from "../src/KayenFactory.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production
 contract deployAll is Script {
@@ -17,7 +17,7 @@ contract deployAll is Script {
         // address wrapperFactory = 0x2B0471E418451aA33F543EF4160AFf1900A2D818;
 
         ChilizWrapperFactory wrapperFactory = new ChilizWrapperFactory();
-        JalaMasterRouter masterRouter = new JalaMasterRouter(
+        KayenMasterRouter masterRouter = new KayenMasterRouter(
             routerFactory,
             address(wrapperFactory),
             router,

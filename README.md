@@ -1,25 +1,66 @@
-# 0.Initialize
+## Foundry
 
-### Run npm install
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
+Foundry consists of:
+
+-   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+-   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+-   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+-   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+
+## Documentation
+
+https://book.getfoundry.sh/
+
+## Usage
+
+### Build
+
+```shell
+$ forge build
 ```
-$> npm install
+
+### Test
+
+```shell
+$ forge test
 ```
 
-### Set secrets.json
+### Format
 
-fix `secrets.json.example` and rename to `secrets.json`
-
-```
-// example
-{
-  "mnemonic": "test test test ... junk",
-  "private": "0xa8a72dc..."
-}
+```shell
+$ forge fmt
 ```
 
-**Warning**: careful to upload(i.e. git push) your own `secrets.json`
+### Gas Snapshots
 
-# 1. File structure
+```shell
+$ forge snapshot
+```
 
-TODO
+### Anvil
+
+```shell
+$ anvil
+```
+
+### Deploy
+
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```
+
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```

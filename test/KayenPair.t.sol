@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../contracts/KayenFactory.sol";
-import "../contracts/tokens/KayenERC20.sol";
-import "../contracts/KayenPair.sol";
-import "../contracts/libraries/UQ112x112.sol";
-import "../contracts/mocks/ERC20Mintable.sol";
+import "../src/KayenFactory.sol";
+import "../src/tokens/KayenERC20.sol";
+import "../src/KayenPair.sol";
+import "../src/libraries/UQ112x112.sol";
+import "../src/mocks/ERC20Mintable.sol";
 
 contract KayenPair_Test is Test {
     address feeSetter = address(69);

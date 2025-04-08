@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {JalaMasterRouter} from "../contracts/JalaMasterRouter.sol";
-import {ChilizWrapperFactory} from "../contracts/utils/ChilizWrapperFactory.sol";
-import {JalaFactory} from "../contracts/JalaFactory.sol";
-import {ERC20Mintable} from "../contracts/mocks/ERC20Mintable_decimal.sol";
+import {KayenMasterRouter} from "../src/KayenMasterRouter.sol";
+import {ChilizWrapperFactory} from "../src/utils/ChilizWrapperFactory.sol";
+import {KayenFactory} from "../src/KayenFactory.sol";
+import {ERC20Mintable} from "../src/mocks/ERC20Mintable_decimal.sol";
 
 // Depending on the nature of your oasys blockchain, deployment scripts are not used in production
 contract deployMockTokens is Script {
