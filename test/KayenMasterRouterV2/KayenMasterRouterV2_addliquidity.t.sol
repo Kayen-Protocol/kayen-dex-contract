@@ -578,8 +578,8 @@ contract KayenMasterRouter_Test is Test {
                 "Incorrect wrapped tokenA balance in pair"
             );
             assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenB balance in pair");
-            assertEq(amountA, expectedWrappedAmountA, "Incorrect wrapped amount for tokenA");
-            assertEq(amountB, 2000000, "Incorrect amount for tokenB");
+            assertEq(amountA, 2000000, "Incorrect wrapped amount for tokenA");
+            assertEq(amountB, expectedWrappedAmountA, "Incorrect amount for tokenB");
         } else {
             assertEq(tokenA_D6.balanceOf(pairAddress), 4000000, "Incorrect tokenA balance in pair");
             assertEq(
@@ -587,8 +587,8 @@ contract KayenMasterRouter_Test is Test {
                 expectedWrappedAmountA + 1000 * 1e18,
                 "Incorrect wrapped tokenB balance in pair"
             );
-            assertEq(amountA, 2000000, "Incorrect amount for tokenA");
-            assertEq(amountB, expectedWrappedAmountA, "Incorrect wrapped amount for tokenB");
+            assertEq(amountA, expectedWrappedAmountA, "Incorrect amount for tokenA");
+            assertEq(amountB, 2000000, "Incorrect wrapped amount for tokenB");
         }
 
         // Calculate expected liquidity

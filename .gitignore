@@ -7,7 +7,8 @@ typechain
 .DS_Store
 bin
 .wake
-lib
+lib/
+
 # Hardhat files
 cache
 artifacts

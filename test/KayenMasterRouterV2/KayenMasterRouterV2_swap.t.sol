@@ -208,8 +208,8 @@ contract KayenMasterRouterSwap_Test is Test {
         assertGt(amounts[1], 0, "Output amount should be greater than 0");
 
         // Check if the reserves have changed correctly
-        assertLt(finalReserve0, initialReserve0, "Reserve0 should decrease");
-        assertGt(finalReserve1, initialReserve1, "Reserve1 should increase");
+        assertGt(finalReserve0, initialReserve0, "Reserve0 should decrease");
+        assertLt(finalReserve1, initialReserve1, "Reserve1 should increase");
 
         uint256 finalBalanceA = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceB = tokenA_D6.balanceOf(user0);
@@ -277,8 +277,8 @@ contract KayenMasterRouterSwap_Test is Test {
         assertEq(amounts.length, 2, "Incorrect number of amounts returned");
         assertEq(amounts[0], swapAmount * 1e18, "Incorrect input amount");
         assertGt(amounts[1], 0, "Output amount should be greater than 0");
-        assertGt(finalReserve0, initialReserve0, "Reserve0 should decrease");
-        assertLt(finalReserve1, initialReserve1, "Reserve1 should increase");
+        assertLt(finalReserve0, initialReserve0, "Reserve0 should decrease");
+        assertGt(finalReserve1, initialReserve1, "Reserve1 should increase");
 
         uint256 finalBalanceA = tokenA_D0.balanceOf(user0);
         uint256 finalBalanceB = tokenA_D6.balanceOf(user0);

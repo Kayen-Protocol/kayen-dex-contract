@@ -83,8 +83,9 @@ contract KayenRouter02_Test is Test {
 
         KayenPair pair = KayenPair(pairAddress);
 
-        assertEq(pair.token0(), address(tokenB));
-        assertEq(pair.token1(), address(tokenA));
+        assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
+        assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
+
         assertEq(pair.totalSupply(), 1 ether);
         assertEq(pair.balanceOf(address(this)), 1 ether - 1000);
 
@@ -97,8 +98,8 @@ contract KayenRouter02_Test is Test {
 
         KayenPair pair = KayenPair(pairAddress);
 
-        assertEq(pair.token0(), address(tokenB));
-        assertEq(pair.token1(), address(tokenA));
+        assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
+        assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
 
         tokenA.transfer(pairAddress, 1 ether);
         tokenB.transfer(pairAddress, 2 ether);
@@ -127,8 +128,8 @@ contract KayenRouter02_Test is Test {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
 
         KayenPair pair = KayenPair(pairAddress);
-        assertEq(pair.token0(), address(tokenB));
-        assertEq(pair.token1(), address(tokenA));
+        assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
+        assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
 
         tokenA.transfer(pairAddress, 5 ether);
         tokenB.transfer(pairAddress, 10 ether);
@@ -154,8 +155,8 @@ contract KayenRouter02_Test is Test {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
         KayenPair pair = KayenPair(pairAddress);
 
-        assertEq(pair.token0(), address(tokenB));
-        assertEq(pair.token1(), address(tokenA));
+        assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
+        assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
 
         tokenA.transfer(pairAddress, 10 ether);
         tokenB.transfer(pairAddress, 5 ether);
@@ -180,9 +181,9 @@ contract KayenRouter02_Test is Test {
     function test_AddLiquidityAmountBOptimalIsTooHighAmountAOk() public {
         address pairAddress = factory.createPair(address(tokenA), address(tokenB));
         KayenPair pair = KayenPair(pairAddress);
-
-        assertEq(pair.token0(), address(tokenB));
-        assertEq(pair.token1(), address(tokenA));
+        
+        assertEq(pair.token0(), address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB));
+        assertEq(pair.token1(), address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA));
 
         tokenA.transfer(pairAddress, 10 ether);
         tokenB.transfer(pairAddress, 5 ether);
